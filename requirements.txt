@@ -1,6 +1,5 @@
 streamlit
 google-generativeai
-chromadb
+chromadb==0.4.15
 requests
-# markdown 제거 (내장 라이브러리 사용)
-# python-dotenv 제거 (streamlit secrets 사용)
+sqlite-utils

@@ -1,10 +1,19 @@
 import streamlit as st
 import google.generativeai as genai
-from knowledge_manager import KnowledgeManager
-from github_manager import GitHubManager
 import os
 from datetime import datetime
 import json
+
+# ChromaDB 환경 설정
+os.environ["CHROMA_SERVER_HOST"] = "localhost"
+os.environ["ALLOW_RESET"] = "TRUE"
+
+try:
+    from knowledge_manager import KnowledgeManager
+    from github_manager import GitHubManager
+except ImportError as e:
+    st.error(f"모듈 로드 실패: {e}")
+    st.stop()
 
 # 페이지 설정
 st.set_page_config(
