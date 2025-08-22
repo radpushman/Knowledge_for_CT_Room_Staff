@@ -13,7 +13,7 @@ except ImportError as e:
 
 # 페이지 설정
 st.set_page_config(
-    page_title="CT Room Staff Knowledge Assistant",
+    page_title="CT실 모든지식",
     page_icon="🏥",
     layout="wide"
 )
