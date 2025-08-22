@@ -101,12 +101,28 @@ with st.sidebar.expander("📊 시스템 정보"):
 if is_cloud:
     st.success("🌐 웹에서 실행 중 - 어디서든 접근 가능!")
     st.info("💡 팀원들과 이 링크를 공유하여 함께 사용하세요!")
+    
+    # 사용 안내 추가
+    with st.expander("📱 모바일에서 사용하기"):
+        st.markdown("""
+        **스마트폰 사용법:**
+        1. 웹브라우저에서 이 링크 접속
+        2. "홈 화면에 추가" 선택
+        3. 앱처럼 바로 실행 가능
+        
+        **🔖 북마크 추천:**
+        - PC: Ctrl+D로 즐겨찾기 추가
+        - 모바일: 홈 화면에 바로가기 추가
+        """)
 else:
     st.info("💻 로컬 환경에서 실행 중")
+    st.warning("⚠️ 현재 로컬에서 실행 중입니다. 팀원과 공유하려면 웹 배포를 권장합니다.")
 
-# 초기 지식 데이터 로드 (웹 배포시 기본 데이터 제공)
-if is_cloud and not os.path.exists("./knowledge"):
+# 초기 지식 데이터 로드 조건 수정
+stats = km.get_stats() if km else {"total_documents": 0}
+if stats["total_documents"] == 0:
     with st.expander("📚 기본 지식 데이터 로드"):
+        st.info("현재 등록된 지식이 없습니다. 기본 CT 지식을 로드하거나 직접 추가해보세요.")
         if st.button("기본 CT 지식 데이터 로드"):
             success = load_default_knowledge(km)
             if success:
@@ -116,28 +132,25 @@ if is_cloud and not os.path.exists("./knowledge"):
 # 사이드바 - 기능 선택과 사용량 표시
 st.sidebar.title("기능 선택")
 
-# 웹 배포 안내
+# 웹 배포 안내 수정
 if is_cloud:
-    with st.sidebar.expander("🌐 웹 배포 정보"):
+    with st.sidebar.expander("🌐 현재 상태"):
         st.markdown("""
-        ✅ **현재 웹에서 실행 중**
-        - 어디서든 접근 가능
-        - 팀원들과 공유 가능
-        - 자동 백업 (GitHub 연동시)
+        ✅ **웹 배포 완료**
+        - Streamlit Cloud에서 운영
+        - 24/7 접근 가능
+        - 자동 업데이트
+        - 팀 협업 가능
         """)
 else:
-    with st.sidebar.expander("🚀 웹 배포 하기"):
+    with st.sidebar.expander("🚀 웹 배포하기"):
         st.markdown("""
-        **Streamlit Cloud 배포 단계:**
-        1. GitHub에 코드 업로드
-        2. share.streamlit.io 접속
-        3. 저장소 선택 후 배포
-        4. 시크릿 설정 완료
+        **현재 로컬 실행 중**
         
-        ✨ **웹 배포 장점:**
-        - 어디서든 접근
-        - 팀 협업 가능
-        - 자동 업데이트
+        팀원과 공유하려면:
+        1. GitHub에 코드 푸시
+        2. Streamlit Cloud 배포
+        3. 웹 링크 공유
         """)
 
 if use_gemini:
