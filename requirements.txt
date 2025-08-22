@@ -1,5 +1,4 @@
 streamlit
 google-generativeai
-chromadb==0.4.15
 requests
 sqlite-utils

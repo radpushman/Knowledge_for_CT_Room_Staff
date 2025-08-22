@@ -4,10 +4,6 @@ import os
 from datetime import datetime
 import json
 
-# ChromaDB 환경 설정
-os.environ["CHROMA_SERVER_HOST"] = "localhost"
-os.environ["ALLOW_RESET"] = "TRUE"
-
 try:
     from knowledge_manager import KnowledgeManager
     from github_manager import GitHubManager
@@ -90,6 +86,16 @@ km = init_knowledge_manager()
 gh = init_github_manager()
 
 st.title("🏥 CT Room Staff Knowledge Assistant")
+
+# 시스템 상태 표시
+with st.sidebar.expander("📊 시스템 정보"):
+    if km:
+        stats = km.get_stats()
+        st.write(f"📚 총 지식: {stats['total_documents']}개")
+        st.write(f"🗂️ 카테고리별:")
+        for category, count in stats['categories'].items():
+            st.write(f"  - {category}: {count}개")
+        st.write(f"🔄 마지막 업데이트: {stats['last_updated'][:16] if stats['last_updated'] != 'N/A' else 'N/A'}")
 
 # 배포 정보 표시
 if is_cloud:
