@@ -110,8 +110,9 @@ class GitHubManager:
             if not self.sync_from_github():
                 return False
             
-            # ChromaDB 초기화 및 재로드
-            km.collection.delete()  # 기존 데이터 삭제
+            # JSON DB 초기화 및 재로드
+            km.json_db = {"documents": {}, "last_updated": datetime.now().isoformat()}
+            km._save_json_db()
             km.load_existing_knowledge()  # 새로 다운로드한 파일들 로드
             
             return True

@@ -343,27 +343,101 @@ elif mode == "📝 지식 추가":
 elif mode == "📚 지식 검색":
     st.header("지식 검색")
     
+    # 디버깅 정보 표시
+    with st.expander("🔍 검색 시스템 상태"):
+        stats = km.get_stats()
+        st.write(f"📊 총 지식 수: {stats['total_documents']}개")
+        st.write(f"📂 카테고리: {list(stats['categories'].keys())}")
+        
+        # 샘플 검색어 제안
+        st.write("💡 **추천 검색어:**")
+        st.write("- 'CT', '조영제', '프로토콜', '장비', '응급'")
+    
     search_query = st.text_input("검색어를 입력하세요:")
     
+    # 고급 검색 옵션
+    with st.expander("🎯 고급 검색 옵션"):
+        category_filter = st.selectbox("카테고리 필터:", 
+                                     ["전체"] + ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"])
+        search_in_content = st.checkbox("내용에서도 검색", value=True)
+        search_in_tags = st.checkbox("태그에서도 검색", value=True)
+    
     if search_query:
-        results = km.search_knowledge(search_query)
-        
-        st.markdown(f"### 검색 결과 ({len(results)}개)")
-        
-        for i, result in enumerate(results):
-            with st.expander(f"📄 {result['title']} - {result['category']}"):
-                col1, col2 = st.columns([4, 1])
+        with st.spinner("검색 중..."):
+            # 기본 검색
+            results = km.search_knowledge(search_query)
+            
+            # 카테고리 필터 적용
+            if category_filter != "전체":
+                results = [r for r in results if r['category'] == category_filter]
+            
+            # 검색 결과가 없을 때 대안 제시
+            if not results:
+                st.warning(f"'{search_query}' 검색 결과가 없습니다.")
                 
-                with col1:
-                    st.markdown(result['content'])
-                    if result.get('tags'):
-                        st.markdown(f"**태그:** {result['tags']}")
+                # 유사한 키워드 제안
+                all_knowledge = km.get_all_knowledge()
+                similar_suggestions = []
                 
-                with col2:
-                    if st.button("✏️ 편집", key=f"edit_{i}"):
-                        st.session_state.edit_knowledge = result
-                        st.session_state.edit_mode = True
-                        st.rerun()
+                for knowledge in all_knowledge[:5]:
+                    title_words = knowledge['title'].lower().split()
+                    content_words = knowledge['content'].lower().split()[:20]  # 첫 20단어만
+                    
+                    if any(word in search_query.lower() for word in title_words + content_words):
+                        similar_suggestions.append(knowledge['title'])
+                
+                if similar_suggestions:
+                    st.info("💡 **이런 자료는 어떠세요?**")
+                    for suggestion in similar_suggestions[:3]:
+                        st.write(f"- {suggestion}")
+                
+                # 전체 지식 미리보기
+                st.markdown("### 📚 등록된 모든 지식")
+                for knowledge in all_knowledge[:5]:
+                    with st.expander(f"📄 {knowledge['title']} - {knowledge['category']}"):
+                        st.markdown(knowledge['content'][:200] + "...")
+                        if knowledge.get('tags'):
+                            st.markdown(f"**태그:** {knowledge['tags']}")
+            else:
+                st.success(f"🎯 '{search_query}' 검색 결과: {len(results)}개")
+                
+                for i, result in enumerate(results):
+                    # 검색어 하이라이트 (간단한 버전)
+                    title_highlight = result['title']
+                    if search_query.lower() in result['title'].lower():
+                        title_highlight = result['title'].replace(
+                            search_query, f"**{search_query}**"
+                        )
+                    
+                    with st.expander(f"📄 {title_highlight} - {result['category']} (점수: {result.get('score', 0)})"):
+                        col1, col2 = st.columns([4, 1])
+                        
+                        with col1:
+                            # 검색어가 포함된 부분 강조 표시
+                            content = result['content']
+                            if search_query.lower() in content.lower():
+                                # 검색어 주변 텍스트 표시
+                                search_pos = content.lower().find(search_query.lower())
+                                if search_pos != -1:
+                                    start = max(0, search_pos - 100)
+                                    end = min(len(content), search_pos + 200)
+                                    snippet = content[start:end]
+                                    if start > 0:
+                                        snippet = "..." + snippet
+                                    if end < len(content):
+                                        snippet = snippet + "..."
+                                    st.markdown(f"**관련 내용:** {snippet}")
+                                    st.markdown("---")
+                            
+                            st.markdown(content)
+                            if result.get('tags'):
+                                st.markdown(f"**태그:** {result['tags']}")
+                        
+                        with col2:
+                            if st.button("✏️ 편집", key=f"edit_{i}"):
+                                st.session_state.edit_knowledge = result
+                                st.session_state.edit_mode = True
+                                st.rerun()
 
 elif mode == "✏️ 지식 편집":
     st.header("지식 편집")
