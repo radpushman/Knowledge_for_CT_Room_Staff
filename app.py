@@ -182,17 +182,6 @@ if use_gemini:
 # GitHub 상태 표시
 if use_github:
     st.sidebar.success("✅ GitHub 연동됨")
-    if st.sidebar.button("🔄 GitHub에서 동기화"):
-        with st.spinner("GitHub에서 최신 지식을 가져오는 중..."):
-            sync_success = gh.sync_from_github()
-            if sync_success:
-                st.sidebar.info("다운로드 완료. 데이터베이스 업데이트 중...")
-                # 동기화 후 KnowledgeManager가 다시 로드하도록 함
-                km.load_existing_knowledge()
-                st.sidebar.success("동기화 완료!")
-                st.rerun()
-            else:
-                st.sidebar.error("동기화 실패")
 
 mode = st.sidebar.selectbox(
     "모드를 선택하세요:",
