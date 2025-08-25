@@ -4,11 +4,6 @@
 
 **👉 [지금 바로 사용하기](https://knowledge-for-ct-room-staff.streamlit.app)**
 
-### ✅ 배포 완료!
-
-📁 **저장소**: https://github.com/radpushman/Knowledge_for_CT_Room_Staff
-🌐 **웹 앱**: Streamlit Cloud에서 실행 중
-
 ## 🆓 완전 무료로 운영 중!
 
 ### 현재 사용 중인 무료 서비스
@@ -16,51 +11,16 @@
 - ✅ **GitHub**: 무료 저장소 및 자동 백업
 - ✅ **JSON 데이터베이스**: 로컬 저장으로 빠른 검색
 - ✅ **키워드 검색**: 무제한 무료 사용
-- ⚠️ **Google Gemini API**: 월 15회 무료 (선택사항)
 
 ## 🌟 현재 사용 가능한 기능
 
-- 🤖 **AI 질의응답**: "심장 CT 촬영법이 뭐야?" 자연어 질문 (월 15회)
+- 🤖 **AI 질의응답**: "심장 CT 촬영법이 뭐야?" 자연어 질문
 - 🔍 **스마트 검색**: 키워드로 관련 자료 즉시 검색 (무제한)
 - 📝 **지식 추가**: 새로운 프로토콜, 경험 공유 (무제한)
 - ✏️ **지식 편집**: 기존 정보 수정 및 업데이트 (무제한)
-- 💾 **자동 백업**: GitHub에 모든 지식 자동 저장
+- 💾 **자동 백업**: 모든 지식 자동 저장
 - 👥 **팀 협업**: 팀원들과 실시간 지식 공유
 - 📱 **모바일 접근**: 스마트폰에서도 완벽 작동
-
-## 🚀 현재 상태: 운영 중
-
-### ✅ 완료된 작업:
-- ✅ Streamlit Cloud 배포 완료
-- ✅ 웹에서 24/7 접근 가능
-- ✅ 모든 핵심 기능 작동
-- ✅ GitHub 연동 준비됨
-
-### 🔧 추천 다음 단계:
-1. **Google AI 연동**: 더 스마트한 답변을 위해 API 키 설정
-2. **GitHub 백업 연동**: 지식 자동 백업을 위해 토큰 설정
-3. **팀 공유**: 웹 링크를 CT실 팀원들과 공유
-4. **지식 입력**: 실제 CT 프로토콜과 경험 입력
-
-## 📋 선택사항: API 키 설정
-
-### Google Gemini API (AI 답변 기능)
-1. [Google AI Studio](https://makersuite.google.com/app/apikey) 접속
-2. "Create API Key" 클릭
-3. Streamlit Cloud 앱 Settings → Secrets에 추가:
-```toml
-GOOGLE_API_KEY = "your_api_key_here"
-```
-
-### GitHub Token (자동 백업)
-1. GitHub Settings → Developer settings → Personal access tokens
-2. "Generate new token (classic)" 선택
-3. `repo` 권한 체크
-4. Streamlit Cloud 앱 Settings → Secrets에 추가:
-```toml
-GITHUB_TOKEN = "your_token_here"
-GITHUB_REPO = "radpushman/Knowledge_for_CT_Room_Staff"
-```
 
 ## 💡 실제 사용 방법
 
