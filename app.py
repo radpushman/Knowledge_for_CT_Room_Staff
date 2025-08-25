@@ -297,37 +297,48 @@ if mode == "💬 질문하기":
 elif mode == "📝 지식 추가":
     st.header("새로운 지식 추가")
     
-    title = st.text_input("제목:")
-    category = st.selectbox("카테고리:", 
-                           ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"])
-    content = st.text_area("내용:", height=300)
-    tags = st.text_input("태그 (쉼표로 구분):")
+    # 보안 코드 입력
+    st.warning("⚠️ 정확한 정보만 입력해주세요. 승인된 직원만 지식을 추가할 수 있습니다.")
+    security_code = st.text_input("보안 코드를 입력하세요:", type="password", help="승인받은 직원에게 문의하세요")
     
-    # GitHub 백업 옵션
-    backup_to_github = False
-    if use_github:
-        backup_to_github = st.checkbox("GitHub에 자동 백업", value=True)
-    
-    if st.button("지식 추가"):
-        if title and content:
-            success = km.add_knowledge(title, content, category, tags)
-            if success:
-                st.success("지식이 성공적으로 추가되었습니다!")
-                
-                # GitHub 백업
-                if backup_to_github and gh:
-                    with st.spinner("GitHub에 백업 중..."):
-                        backup_success = gh.backup_knowledge(title, content, category, tags)
-                        if backup_success:
-                            st.success("GitHub 백업 완료!")
-                        else:
-                            st.warning("GitHub 백업 실패 (로컬에는 저장됨)")
-                
-                st.rerun()
+    if security_code == "2398":
+        st.success("✅ 승인된 사용자입니다. 지식을 추가할 수 있습니다.")
+        
+        title = st.text_input("제목:")
+        category = st.selectbox("카테고리:", 
+                               ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"])
+        content = st.text_area("내용:", height=300)
+        tags = st.text_input("태그 (쉼표로 구분):")
+        
+        # GitHub 백업 옵션
+        backup_to_github = False
+        if use_github:
+            backup_to_github = st.checkbox("GitHub에 자동 백업", value=True)
+        
+        if st.button("지식 추가"):
+            if title and content:
+                success = km.add_knowledge(title, content, category, tags)
+                if success:
+                    st.success("지식이 성공적으로 추가되었습니다!")
+                    
+                    # GitHub 백업
+                    if backup_to_github and gh:
+                        with st.spinner("GitHub에 백업 중..."):
+                            backup_success = gh.backup_knowledge(title, content, category, tags)
+                            if backup_success:
+                                st.success("GitHub 백업 완료!")
+                            else:
+                                st.warning("GitHub 백업 실패 (로컬에는 저장됨)")
+                    
+                    st.rerun()
+                else:
+                    st.error("지식 추가에 실패했습니다.")
             else:
-                st.error("지식 추가에 실패했습니다.")
-        else:
-            st.error("제목과 내용을 모두 입력해주세요.")
+                st.error("제목과 내용을 모두 입력해주세요.")
+    elif security_code:
+        st.error("❌ 잘못된 보안 코드입니다. 승인받은 직원에게 문의하세요.")
+    else:
+        st.info("💡 지식을 추가하려면 보안 코드를 입력하세요.")
 
 elif mode == "📚 지식 검색":
     st.header("지식 검색")
@@ -357,8 +368,85 @@ elif mode == "📚 지식 검색":
 elif mode == "✏️ 지식 편집":
     st.header("지식 편집")
     
-    # 편집할 지식이 선택되지 않은 경우
-    if 'edit_knowledge' not in st.session_state:
+    # 보안 코드 입력 (편집 모드에서도)
+    if 'edit_knowledge' in st.session_state:
+        st.warning("⚠️ 지식을 수정하려면 보안 코드가 필요합니다.")
+        security_code = st.text_input("보안 코드를 입력하세요:", type="password", help="승인받은 직원에게 문의하세요", key="edit_security")
+        
+        if security_code == "2398":
+            st.success("✅ 승인된 사용자입니다. 지식을 편집할 수 있습니다.")
+            
+            knowledge = st.session_state.edit_knowledge
+            
+            st.success(f"📝 편집 중: {knowledge['title']}")
+            
+            # 편집 폼
+            new_title = st.text_input("제목:", value=knowledge['title'])
+            new_category = st.selectbox("카테고리:", 
+                                       ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"],
+                                       index=["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"].index(knowledge['category']) if knowledge['category'] in ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"] else 4)
+            new_content = st.text_area("내용:", value=knowledge['content'], height=300)
+            new_tags = st.text_input("태그 (쉼표로 구분):", value=knowledge.get('tags', ''))
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("💾 저장"):
+                    if new_title and new_content:
+                        success = km.update_knowledge(
+                            knowledge['id'], 
+                            new_title, 
+                            new_content, 
+                            new_category, 
+                            new_tags
+                        )
+                        if success:
+                            st.success("지식이 성공적으로 수정되었습니다!")
+                            
+                            # GitHub 백업
+                            if use_github and gh:
+                                backup_success = gh.backup_knowledge(new_title, new_content, new_category, new_tags)
+                                if backup_success:
+                                    st.success("GitHub 백업 완료!")
+                                else:
+                                    st.warning("GitHub 백업 실패 (로컬에는 저장됨)")
+                             
+                            del st.session_state.edit_knowledge
+                            st.rerun()
+                        else:
+                            st.error("수정에 실패했습니다.")
+                    else:
+                        st.error("제목과 내용을 모두 입력해주세요.")
+            
+            with col2:
+                if st.button("❌ 취소"):
+                    del st.session_state.edit_knowledge
+                    if 'edit_mode' in st.session_state:
+                        del st.session_state.edit_mode
+                    st.rerun()
+            
+            with col3:
+                if st.button("🗑️ 삭제"):
+                    if st.session_state.get("confirm_delete_edit", False):
+                        success = km.delete_knowledge(knowledge['id'])
+                        if success:
+                            st.success("지식이 삭제되었습니다!")
+                            del st.session_state.edit_knowledge
+                            if 'edit_mode' in st.session_state:
+                                del st.session_state.edit_mode
+                            st.rerun()
+                        else:
+                            st.error("삭제에 실패했습니다.")
+                    else:
+                        st.session_state.confirm_delete_edit = True
+                        st.warning("한 번 더 클릭하면 삭제됩니다.")
+                        st.rerun()
+        elif security_code:
+            st.error("❌ 잘못된 보안 코드입니다. 승인받은 직원에게 문의하세요.")
+        else:
+            st.info("💡 지식을 편집하려면 보안 코드를 입력하세요.")
+    else:
+        # 편집할 지식이 선택되지 않은 경우
         st.info("편집할 지식을 선택하세요.")
         
         # 모든 지식 목록 표시
@@ -382,90 +470,11 @@ elif mode == "✏️ 지식 편집":
                             st.session_state.edit_mode = True
                             st.rerun()
                         
+                        # 삭제는 보안 코드 없이도 목록에서 확인 가능하도록 유지
                         if st.button("🗑️ 삭제", key=f"delete_{i}"):
-                            if st.session_state.get(f"confirm_delete_{i}", False):
-                                success = km.delete_knowledge(knowledge['id'])
-                                if success:
-                                    st.success("지식이 삭제되었습니다!")
-                                    if 'edit_knowledge' in st.session_state:
-                                        del st.session_state.edit_knowledge
-                                    st.rerun()
-                                else:
-                                    st.error("삭제에 실패했습니다.")
-                            else:
-                                st.session_state[f"confirm_delete_{i}"] = True
-                                st.warning("한 번 더 클릭하면 삭제됩니다.")
-                                st.rerun()
+                            st.warning("⚠️ 지식을 삭제하려면 편집 모드에서 보안 코드를 입력하세요.")
         else:
             st.info("등록된 지식이 없습니다. 먼저 지식을 추가해주세요.")
-    
-    # 편집 모드
-    else:
-        knowledge = st.session_state.edit_knowledge
-        
-        st.success(f"📝 편집 중: {knowledge['title']}")
-        
-        # 편집 폼
-        new_title = st.text_input("제목:", value=knowledge['title'])
-        new_category = st.selectbox("카테고리:", 
-                                   ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"],
-                                   index=["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"].index(knowledge['category']) if knowledge['category'] in ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"] else 4)
-        new_content = st.text_area("내용:", value=knowledge['content'], height=300)
-        new_tags = st.text_input("태그 (쉼표로 구분):", value=knowledge.get('tags', ''))
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("💾 저장"):
-                if new_title and new_content:
-                    success = km.update_knowledge(
-                        knowledge['id'], 
-                        new_title, 
-                        new_content, 
-                        new_category, 
-                        new_tags
-                    )
-                    if success:
-                        st.success("지식이 성공적으로 수정되었습니다!")
-                        
-                        # GitHub 백업
-                        if use_github and gh:
-                            backup_success = gh.backup_knowledge(new_title, new_content, new_category, new_tags)
-                            if backup_success:
-                                st.success("GitHub 백업 완료!")
-                            else:
-                                st.warning("GitHub 백업 실패 (로컬에는 저장됨)")
-                         
-                        del st.session_state.edit_knowledge
-                        st.rerun()
-                    else:
-                        st.error("수정에 실패했습니다.")
-                else:
-                    st.error("제목과 내용을 모두 입력해주세요.")
-        
-        with col2:
-            if st.button("❌ 취소"):
-                del st.session_state.edit_knowledge
-                if 'edit_mode' in st.session_state:
-                    del st.session_state.edit_mode
-                st.rerun()
-        
-        with col3:
-            if st.button("🗑️ 삭제"):
-                if st.session_state.get("confirm_delete_edit", False):
-                    success = km.delete_knowledge(knowledge['id'])
-                    if success:
-                        st.success("지식이 삭제되었습니다!")
-                        del st.session_state.edit_knowledge
-                        if 'edit_mode' in st.session_state:
-                            del st.session_state.edit_mode
-                        st.rerun()
-                    else:
-                        st.error("삭제에 실패했습니다.")
-                else:
-                    st.session_state.confirm_delete_edit = True
-                    st.warning("한 번 더 클릭하면 삭제됩니다.")
-                    st.rerun()
 
 elif mode == "🔄 GitHub 관리":
     st.header("GitHub 저장소 관리")
