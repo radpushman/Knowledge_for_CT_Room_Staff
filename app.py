@@ -136,24 +136,37 @@ with st.sidebar.expander("📊 시스템 정보"):
 
 # 배포 정보 표시
 if is_cloud:
-    st.success("🌐 웹에서 실행 중 - 어디서든 접근 가능!")
+    st.success("🌐 Streamlit Cloud에서 실행 중 - 어디서든 접근 가능!")
     st.info("💡 팀원들과 이 링크를 공유하여 함께 사용하세요!")
     
     # 사용 안내 추가
     with st.expander("📱 모바일에서 사용하기"):
         st.markdown("""
+        **현재 웹 배포 상태입니다! 🎉**
+        
         **스마트폰 사용법:**
-        1. 웹브라우저에서 이 링크 접속
+        1. 이 웹 링크를 스마트폰으로 접속
         2. "홈 화면에 추가" 선택
         3. 앱처럼 바로 실행 가능
         
         **🔖 북마크 추천:**
         - PC: Ctrl+D로 즐겨찾기 추가
         - 모바일: 홈 화면에 바로가기 추가
+        
+        **🌍 접근 주소:**
+        - 현재 주소를 북마크하세요
+        - 병원 내 모든 컴퓨터에서 접근 가능
+        - 집에서도 스마트폰으로 확인 가능
         """)
 else:
-    st.info("💻 로컬 환경에서 실행 중")
-    st.warning("⚠️ 현재 로컬에서 실행 중입니다. 팀원과 공유하려면 웹 배포를 권장합니다.")
+    st.warning("💻 개발자 로컬 환경에서 실행 중")
+    st.info("""
+    🔧 **현재 상태**: localhost에서만 접근 가능
+    
+    **로컬 vs 웹 배포 차이점:**
+    - 로컬: `localhost:8501` (개발자 컴퓨터에서만)
+    - 웹 배포: `your-app.streamlit.app` (전 세계 어디서든)
+    """)
 
 # 초기 지식 데이터 로드 조건 수정
 stats = km.get_stats() if km else {"total_documents": 0}
@@ -171,23 +184,33 @@ st.sidebar.title("기능 선택")
 
 # 웹 배포 안내 수정
 if is_cloud:
-    with st.sidebar.expander("🌐 현재 상태"):
+    with st.sidebar.expander("🌐 현재 상태: 웹 배포됨"):
         st.markdown("""
-        ✅ **웹 배포 완료**
-        - Streamlit Cloud에서 운영
+        ✅ **Streamlit Cloud 운영 중**
         - 24/7 접근 가능
+        - 팀원들과 실시간 공유
         - 자동 업데이트
-        - 팀 협업 가능
+        - 모바일에서도 완벽 작동
+        
+        🎯 **활용법:**
+        - 링크를 팀원들과 공유
+        - 북마크 저장 권장
+        - 어디서든 즉시 접근
         """)
 else:
-    with st.sidebar.expander("🚀 웹 배포하기"):
+    with st.sidebar.expander("🚀 웹 배포 필요"):
         st.markdown("""
-        **현재 로컬 실행 중**
+        ⚠️ **현재 로컬 실행 중**
         
-        팀원과 공유하려면:
+        **문제점:**
+        - 개발자 컴퓨터에서만 접근 가능
+        - 팀원들이 사용할 수 없음
+        - 컴퓨터 끄면 서비스 중단
+        
+        **해결방법:**
         1. GitHub에 코드 푸시
         2. Streamlit Cloud 배포
-        3. 웹 링크 공유
+        3. 웹 링크로 팀원들과 공유
         """)
 
 if use_gemini:
