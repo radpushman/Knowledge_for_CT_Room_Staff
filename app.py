@@ -62,7 +62,7 @@ def load_usage():
     if os.path.exists(USAGE_FILE):
         with open(USAGE_FILE, 'r') as f:
             return json.load(f)
-    return {"count": 0, "month": datetime.now().month}
+    return {"count": 0, "date": datetime.now().date().isoformat()}
 
 def save_usage(usage_data):
     with open(USAGE_FILE, 'w') as f:
@@ -70,11 +70,11 @@ def save_usage(usage_data):
 
 def increment_usage():
     usage = load_usage()
-    current_month = datetime.now().month
+    current_date = datetime.now().date().isoformat()
     
-    # 월이 바뀌면 카운트 리셋
-    if usage["month"] != current_month:
-        usage = {"count": 0, "month": current_month}
+    # 날이 바뀌면 카운트 리셋
+    if usage["date"] != current_date:
+        usage = {"count": 0, "date": current_date}
     
     usage["count"] += 1
     save_usage(usage)
@@ -175,9 +175,9 @@ st.sidebar.title("기능 선택")
 
 if use_gemini:
     usage = load_usage()
-    st.sidebar.info(f"이번 달 AI 사용량: {usage['count']}/15")
-    if usage['count'] >= 15:
-        st.sidebar.warning("무료 한도 초과! 검색 모드만 사용 가능합니다.")
+    st.sidebar.info(f"오늘 AI 사용량: {usage['count']}/1,500")
+    if usage['count'] >= 1500:
+        st.sidebar.warning("일일 무료 한도 초과! 내일 다시 사용 가능합니다.")
 
 # GitHub 상태 표시
 if use_github:
@@ -207,7 +207,7 @@ if mode == "💬 질문하기":
             relevant_docs = km.search_knowledge(user_question)
         
         # 2단계: Gemini API를 통한 답변 생성 (선택사항)
-        if use_gemini and load_usage()["count"] < 15:
+        if use_gemini and load_usage()["count"] < 1500:
             with st.spinner("🤖 AI가 검색된 자료를 분석하여 답변을 생성중입니다..."):
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
@@ -249,6 +249,10 @@ if mode == "💬 질문하기":
                         - 응급상황에서는 기존 프로토콜을 우선 적용하세요
                         """)
                         
+                    # 사용량 안내 추가
+                    current_usage = load_usage()["count"]
+                    st.info(f"💡 오늘 AI 사용량: {current_usage}/1,500 (무료)")
+                    
                 except Exception as e:
                     st.error(f"AI 답변 생성 실패: {e}")
                     st.info("AI 답변 생성에 실패했지만, 아래 검색된 자료를 확인하세요.")
@@ -267,7 +271,7 @@ if mode == "💬 질문하기":
                     **Gemini AI 답변 기능을 사용하려면:**
                     1. Google AI Studio에서 무료 API 키 발급
                     2. Streamlit Secrets에 API 키 추가
-                    3. 월 15회 무료로 AI 답변 이용 가능
+                    3. **일일 1,500회 무료**로 AI 답변 이용 가능
                     
                     **AI 없이도 가능한 기능:**
                     - 키워드 검색으로 관련 자료 찾기
