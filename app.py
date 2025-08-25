@@ -122,7 +122,7 @@ def init_github_manager():
 km = init_knowledge_manager()
 gh = init_github_manager()
 
-st.title("🏥 CT Room Staff Knowledge Assistant")
+st.title("🏥 CT실의 모든지식")
 
 # 시스템 상태 표시
 with st.sidebar.expander("📊 시스템 정보"):
@@ -197,9 +197,9 @@ mode = st.sidebar.selectbox(
 )
 
 if mode == "💬 질문하기":
-    st.header("자연어로 질문하기")
+    st.header("말하듯 질문해요")
     
-    user_question = st.text_input("궁금한 것을 자연어로 입력하세요:")
+    user_question = st.text_input("궁금한 것을 말하듯 입력하세요:")
     
     if user_question:
         # 1단계: 관련 지식 검색 (ChromaDB/키워드 검색)
