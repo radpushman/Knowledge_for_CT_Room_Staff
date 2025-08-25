@@ -15,26 +15,33 @@ except ImportError as e:
 def load_default_knowledge(km):
     """웹 배포시 기본 CT 지식 로드"""
     try:
-        default_knowledge = [
-            {
-                "title": "CT 스캔 기본 프로토콜",
-                "category": "프로토콜",
-                "content": "CT 스캔의 기본적인 촬영 순서와 환자 준비사항입니다.\n\n1. 환자 확인 및 동의서 작성\n2. 금속 제거 확인\n3. 조영제 주입 여부 확인\n4. 환자 위치 설정\n5. 스캔 범위 설정\n6. 촬영 실시",
-                "tags": "기본, 프로토콜, 촬영"
-            },
-            {
-                "title": "조영제 부작용 대응",
-                "category": "응급상황",
-                "content": "조영제 투여 후 발생할 수 있는 부작용과 대응방법입니다.\n\n**경미한 반응:**\n- 구역, 구토\n- 두드러기\n- 가려움\n\n**중증 반응:**\n- 호흡곤란\n- 혈압 저하\n- 의식 저하\n\n즉시 의료진 호출 및 응급처치 실시",
-                "tags": "조영제, 응급, 부작용"
-            },
-            {
-                "title": "CT 장비 일일 점검사항",
-                "category": "장비운용",
-                "content": "매일 실시해야 할 CT 장비 점검 항목입니다.\n\n1. 갠트리 작동 확인\n2. 테이블 이동 확인\n3. 냉각 시스템 점검\n4. 조영제 주입기 점검\n5. 응급장비 확인\n6. 점검 기록 작성",
-                "tags": "장비, 점검, 일일"
-            }
-        ]
+        # JSON 파일에서 로드 시도
+        json_file_path = "./default_knowledge.json"
+        if os.path.exists(json_file_path):
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                default_knowledge = json.load(f)
+        else:
+            # 파일이 없으면 하드코딩된 기본 지식 사용
+            default_knowledge = [
+                {
+                    "title": "CT 스캔 기본 프로토콜",
+                    "category": "프로토콜",
+                    "content": "CT 스캔의 기본적인 촬영 순서와 환자 준비사항입니다.\n\n1. 환자 확인 및 동의서 작성\n2. 금속 제거 확인\n3. 조영제 주입 여부 확인\n4. 환자 위치 설정\n5. 스캔 범위 설정\n6. 촬영 실시",
+                    "tags": "기본, 프로토콜, 촬영"
+                },
+                {
+                    "title": "조영제 부작용 대응",
+                    "category": "응급상황",
+                    "content": "조영제 투여 후 발생할 수 있는 부작용과 대응방법입니다.\n\n**경미한 반응:**\n- 구역, 구토\n- 두드러기\n- 가려움\n\n**중증 반응:**\n- 호흡곤란\n- 혈압 저하\n- 의식 저하\n\n즉시 의료진 호출 및 응급처치 실시",
+                    "tags": "조영제, 응급, 부작용"
+                },
+                {
+                    "title": "CT 장비 일일 점검사항",
+                    "category": "장비운용",
+                    "content": "매일 실시해야 할 CT 장비 점검 항목입니다.\n\n1. 갠트리 작동 확인\n2. 테이블 이동 확인\n3. 냉각 시스템 점검\n4. 조영제 주입기 점검\n5. 응급장비 확인\n6. 점검 기록 작성",
+                    "tags": "장비, 점검, 일일"
+                }
+            ]
         
         for knowledge in default_knowledge:
             km.add_knowledge(
