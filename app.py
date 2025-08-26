@@ -57,7 +57,7 @@ def load_default_knowledge(km):
 
 # 페이지 설정
 st.set_page_config(
-    page_title="CT실 모든지식",
+    page_title="CT위키",
     page_icon="🏥",
     layout="wide"
 )
