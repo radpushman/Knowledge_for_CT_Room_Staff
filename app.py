@@ -132,7 +132,7 @@ def init_github_manager():
 km = init_knowledge_manager()
 gh = init_github_manager()
 
-st.title("🏥 CT실 모든지식")
+st.title("🏥 CT위키")
 
 # 시스템 상태 표시
 with st.sidebar.expander("📊 시스템 정보"):
