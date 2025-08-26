@@ -169,13 +169,27 @@ if is_cloud:
 # 초기 지식 데이터 로드 조건 수정
 stats = km.get_stats() if km else {"total_documents": 0}
 if stats["total_documents"] == 0:
-    with st.expander("📚 기본 지식 데이터 로드"):
-        st.info("현재 등록된 지식이 없습니다. 기본 CT 지식을 로드하거나 직접 추가해보세요.")
-        if st.button("기본 CT 지식 데이터 로드"):
-            success = load_default_knowledge(km)
-            if success:
-                st.success("기본 지식이 로드되었습니다!")
-                st.rerun()
+    st.warning("📚 현재 등록된 지식이 없습니다!")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 기본 CT 지식 데이터 로드", type="primary"):
+            with st.spinner("기본 지식을 로드하는 중..."):
+                success = load_default_knowledge(km)
+                if success:
+                    # 로드 후 실제 개수 확인
+                    new_stats = km.get_stats()
+                    if new_stats["total_documents"] > 0:
+                        st.success(f"✅ 기본 지식 {new_stats['total_documents']}개가 성공적으로 로드되었습니다!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("❌ 지식 로드에 실패했습니다. 데이터가 추가되지 않았습니다.")
+                else:
+                    st.error("❌ 기본 지식 로드 실패")
+    
+    with col2:
+        st.info("💡 **포함될 기본 지식:**\n- CT 스캔 기본 프로토콜\n- 조영제 부작용 대응\n- CT 장비 일일 점검사항")
 
 # 사이드바 - 기능 선택과 사용량 표시
 st.sidebar.title("기능 선택")
