@@ -184,11 +184,12 @@ if use_github:
 
 mode = st.sidebar.selectbox(
     "모드를 선택하세요:",
-    ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집", "🔄 GitHub 관리"]
+    ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집", "🔄 GitHub 관리"],
+    format_func=lambda x: x.split(" ")[0] + " " + " ".join(x.split(" ")[1:]) # 아이콘과 텍스트 분리
 )
 
 if mode == "💬 질문하기":
-    st.header("말하듯 질문해요")
+    st.header("💬 말하듯 질문해요")
     
     user_question = st.text_input("궁금한 것을 말하듯 입력하세요:")
     
@@ -286,7 +287,7 @@ if mode == "💬 질문하기":
                         st.rerun()
 
 elif mode == "📝 지식 추가":
-    st.header("새로운 지식 추가")
+    st.header("📝 새로운 지식 추가")
     
     # 보안 코드 입력
     st.warning("⚠️ 정확한 정보만 입력해주세요. 승인된 직원만 지식을 추가할 수 있습니다.")
@@ -332,7 +333,7 @@ elif mode == "📝 지식 추가":
         st.info("💡 지식을 추가하려면 보안 코드를 입력하세요.")
 
 elif mode == "📚 지식 검색":
-    st.header("지식 검색")
+    st.header("📚 지식 검색")
     
     # 디버깅 정보 표시
     with st.expander("🔍 검색 시스템 상태"):
@@ -431,7 +432,7 @@ elif mode == "📚 지식 검색":
                                 st.rerun()
 
 elif mode == "✏️ 지식 편집":
-    st.header("지식 편집")
+    st.header("✏️ 지식 편집")
     
     # 보안 코드 입력 (편집 모드에서도)
     if 'edit_knowledge' in st.session_state:
@@ -493,9 +494,20 @@ elif mode == "✏️ 지식 편집":
             with col3:
                 if st.button("🗑️ 삭제"):
                     if st.session_state.get("confirm_delete_edit", False):
+                        # 로컬 DB 및 파일 삭제
                         success = km.delete_knowledge(knowledge['id'])
                         if success:
                             st.success("지식이 삭제되었습니다!")
+                            
+                            # GitHub 백업 파일도 삭제
+                            if use_github and gh:
+                                with st.spinner("GitHub 백업 파일 삭제 중..."):
+                                    backup_deleted = gh.delete_knowledge_backup(knowledge['id'])
+                                    if backup_deleted:
+                                        st.success("GitHub 백업도 삭제되었습니다.")
+                                    else:
+                                        st.warning("GitHub 백업 파일 삭제에 실패했습니다.")
+
                             del st.session_state.edit_knowledge
                             if 'edit_mode' in st.session_state:
                                 del st.session_state.edit_mode
@@ -537,12 +549,12 @@ elif mode == "✏️ 지식 편집":
                         
                         # 삭제는 보안 코드 없이도 목록에서 확인 가능하도록 유지
                         if st.button("🗑️ 삭제", key=f"delete_{i}"):
-                            st.warning("⚠️ 지식을 삭제하려면 편집 모드에서 보안 코드를 입력하세요.")
+                            st.warning("⚠️ 지식을 삭제하려면 먼저 '편집'을 누른 후 보안 코드를 입력하세요.")
         else:
             st.info("등록된 지식이 없습니다. 먼저 지식을 추가해주세요.")
 
 elif mode == "🔄 GitHub 관리":
-    st.header("GitHub 저장소 관리")
+    st.header("🔄 GitHub 저장소 관리")
     
     if not use_github:
         st.warning("GitHub 연동이 설정되지 않았습니다.")
@@ -567,14 +579,21 @@ elif mode == "🔄 GitHub 관리":
         
         with col2:
             st.subheader("📥 복원")
+            st.warning("⚠️ GitHub에서 복원하면 현재 로컬 지식은 모두 덮어쓰기 됩니다.")
             if st.button("GitHub에서 모든 지식 가져오기"):
-                with st.spinner("복원 중..."):
-                    success = gh.restore_all_knowledge(km)
-                    if success:
-                        st.success("복원 완료!")
-                        st.rerun()
-                    else:
-                        st.error("복원 실패")
+                st.session_state.confirm_restore = True
+
+            if st.session_state.get('confirm_restore'):
+                if st.button("복원을 확정하려면 다시 클릭하세요", type="primary"):
+                    with st.spinner("복원 중..."):
+                        success = gh.restore_all_knowledge(km)
+                        if success:
+                            st.success("복원 완료!")
+                            st.session_state.confirm_restore = False
+                            st.rerun()
+                        else:
+                            st.error("복원 실패")
+                            st.session_state.confirm_restore = False
         
         st.subheader("📊 저장소 정보")
         if gh:
