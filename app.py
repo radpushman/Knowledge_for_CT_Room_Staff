@@ -109,6 +109,9 @@ try:
 except Exception:
     pass
 
+# 보안 코드 설정(하드코딩 제거)
+SECURITY_CODE = st.secrets.get('SECURITY_CODE', '2398')
+
 # 지식 관리자 초기화
 @st.cache_resource
 def init_knowledge_manager():
@@ -129,7 +132,7 @@ def init_github_manager():
 km = init_knowledge_manager()
 gh = init_github_manager()
 
-st.title("🏥 CT실의 모든지식")
+st.title("🏥 CT실 모든지식")
 
 # 시스템 상태 표시
 with st.sidebar.expander("📊 시스템 정보"):
@@ -289,7 +292,7 @@ elif mode == "📝 지식 추가":
     st.warning("⚠️ 정확한 정보만 입력해주세요. 승인된 직원만 지식을 추가할 수 있습니다.")
     security_code = st.text_input("보안 코드를 입력하세요:", type="password", help="승인받은 직원에게 문의하세요")
     
-    if security_code == "2398":
+    if security_code == SECURITY_CODE:
         st.success("✅ 승인된 사용자입니다. 지식을 추가할 수 있습니다.")
         
         title = st.text_input("제목:")
@@ -343,12 +346,12 @@ elif mode == "📚 지식 검색":
     
     search_query = st.text_input("검색어를 입력하세요:")
     
-    # 고급 검색 옵션
-    with st.expander("🎯 고급 검색 옵션"):
-        category_filter = st.selectbox("카테고리 필터:", 
-                                     ["전체"] + ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"])
-        search_in_content = st.checkbox("내용에서도 검색", value=True)
-        search_in_tags = st.checkbox("태그에서도 검색", value=True)
+    # 고급 옵션 간소화: 카테고리 필터만 유지
+    category_filter = st.selectbox(
+        "카테고리 필터:",
+        ["전체", "프로토콜", "안전수칙", "장비운용", "응급상황", "기타"],
+        key="search_category_filter"
+    )
     
     if search_query:
         with st.spinner("검색 중..."):
@@ -435,7 +438,7 @@ elif mode == "✏️ 지식 편집":
         st.warning("⚠️ 지식을 수정하려면 보안 코드가 필요합니다.")
         security_code = st.text_input("보안 코드를 입력하세요:", type="password", help="승인받은 직원에게 문의하세요", key="edit_security")
         
-        if security_code == "2398":
+        if security_code == SECURITY_CODE:
             st.success("✅ 승인된 사용자입니다. 지식을 편집할 수 있습니다.")
             
             knowledge = st.session_state.edit_knowledge
