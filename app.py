@@ -8,8 +8,8 @@ from datetime import datetime
 st.set_page_config(page_title="CT위키", page_icon="🏥", layout="wide")
 st.title("🏥 CT위키")
 
-# 간단한 보안 코드 (하드코딩으로 확실하게)
-SECURITY_CODE = "2398"
+# 보안 코드 - Secrets에서 가져오거나 기본값 사용 (노출 안됨)
+SECURITY_CODE = st.secrets.get("SECURITY_CODE", "2398")
 
 # 세션 상태 초기화
 if 'knowledge_db' not in st.session_state:
@@ -214,7 +214,7 @@ if st.sidebar.button("💾 백업"):
     else:
         st.sidebar.error(result)
 
-restore_code = st.sidebar.text_input("복원 코드 (2398):", type="password", key="restore")
+restore_code = st.sidebar.text_input("복원 코드:", type="password", key="restore")
 
 if st.sidebar.button("📥 복원"):
     if restore_code:
@@ -266,7 +266,7 @@ elif mode == "📝 지식 추가":
     elif security_input:
         st.error("❌ 잘못된 코드")
     else:
-        st.info("💡 보안 코드를 입력하세요 (2398)")
+        st.info("💡 보안 코드를 입력하세요 (관리자에게 문의)")
 
 elif mode == "📚 지식 검색":
     st.header("📚 지식 검색")
@@ -327,6 +327,6 @@ st.markdown("""
 ### 💾 사용 안내
 - **리부트 시 보존**: 앱 시작 시 GitHub에서 자동 복원
 - **수동 백업**: 사이드바 "백업" 버튼 클릭  
-- **수동 복원**: 코드 2398 입력 후 "복원" 버튼
-- **보안 코드**: 지식 추가/편집 시 2398 입력
+- **수동 복원**: 관리자 코드 입력 후 "복원" 버튼
+- **보안 코드**: 지식 추가/편집 시 관리자에게 문의
 """)
