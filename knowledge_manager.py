@@ -269,15 +269,24 @@ class KnowledgeManager:
         
         try:
             for filename in os.listdir(self.knowledge_dir):
-                if filename.endswith('.md'):
+                # README.md 파일은 건너뛰도록 수정 (대소문자 구분 없이)
+                if filename.endswith('.md') and filename.lower() != 'readme.md':
                     filepath = os.path.join(self.knowledge_dir, filename)
                     try:
                         with open(filepath, 'r', encoding='utf-8') as f:
                             content = f.read()
+                        
+                        # 빈 파일이나 너무 짧은 파일 건너뛰기
+                        if len(content.strip()) < 10:
+                            continue
                             
                         # 기본 파싱
                         lines = content.split('\n')
-                        title = lines[0].replace('# ', '') if lines else filename[:-3]
+                        title = lines[0].replace('# ', '').strip() if lines else filename[:-3]
+                        
+                        # 제목이 비어있으면 건너뛰기
+                        if not title or title == filename[:-3]:
+                            continue
                         
                         # 메타데이터 추출
                         category = "기타"
@@ -296,23 +305,27 @@ class KnowledgeManager:
                         # 실제 내용 추출
                         actual_content = '\n'.join(lines[content_start:]).strip()
                         
-                        # 이미 존재하는지 확인
+                        # 내용이 너무 짧으면 건너뛰기
+                        if len(actual_content) < 5:
+                            continue
+                        
+                        # 파일명에서 doc_id 추출 (타임스탬프 부분)
                         doc_id = filename.replace('.md', '')
                         
-                        if doc_id not in self.json_db["documents"]:
-                            # JSON DB에 추가
-                            metadata = {
-                                "title": title,
-                                "category": category,
-                                "tags": tags,
-                                "created_at": datetime.now().isoformat()
-                            }
-                            
-                            self.json_db["documents"][doc_id] = {
-                                "content": actual_content,
-                                "metadata": metadata
-                            }
-                            loaded_count += 1
+                        # JSON DB에 추가 (기존 데이터 덮어쓰기)
+                        metadata = {
+                            "title": title,
+                            "category": category,
+                            "tags": tags,
+                            "created_at": datetime.now().isoformat()
+                        }
+                        
+                        self.json_db["documents"][doc_id] = {
+                            "content": actual_content,
+                            "metadata": metadata
+                        }
+                        loaded_count += 1
+                        print(f"Loaded: {title}")
                         
                     except Exception as e:
                         print(f"Error loading {filename}: {e}")
@@ -320,11 +333,33 @@ class KnowledgeManager:
             
             if loaded_count > 0:
                 self._save_json_db()
-                print(f"Loaded {loaded_count} existing knowledge files")
+                print(f"Successfully loaded {loaded_count} knowledge files")
+            else:
+                print("No valid knowledge files found to load")
                 
         except Exception as e:
             print(f"Error in load_existing_knowledge: {e}")
-    
+
+    def restore_from_files(self):
+        """
+        knowledge 폴더의 모든 .md 파일을 기반으로 JSON DB를 완전히 새로고침합니다.
+        GitHub에서 복원 후 사용됩니다.
+        """
+        print("Restoring knowledge base from files...")
+        
+        # 1. 데이터베이스 완전 초기화
+        self.json_db = {"documents": {}, "last_updated": datetime.now().isoformat()}
+        
+        # 2. knowledge 폴더의 모든 파일 다시 로드
+        self.load_existing_knowledge()
+        
+        # 3. 변경사항 저장
+        self._save_json_db()
+        
+        # 4. 결과 확인
+        stats = self.get_stats()
+        print(f"Knowledge base restored: {stats['total_documents']} documents loaded")
+
     def get_stats(self) -> Dict:
         """지식 데이터베이스 통계"""
         try:

@@ -15,10 +15,29 @@ class GitHubManager:
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
-    
+        self.last_error: Optional[str] = None  # 마지막 오류 메시지 저장
+
+    def _set_error(self, where: str, response: Optional[requests.Response] = None, exc: Optional[Exception] = None):
+        if response is not None:
+            try:
+                body = response.json()
+            except Exception:
+                body = response.text
+            self.last_error = f"{where} failed: {response.status_code} {body}"
+        elif exc is not None:
+            self.last_error = f"{where} exception: {exc}"
+        else:
+            self.last_error = f"{where} failed"
+
+    def get_last_error(self) -> Optional[str]:
+        return self.last_error
+
     def backup_knowledge(self, title: str, content: str, category: str, tags: str) -> bool:
         """단일 지식을 GitHub에 백업"""
         try:
+            # 먼저 knowledge 폴더가 있는지 확인하고 없으면 생성
+            self._ensure_knowledge_folder()
+            
             # 파일명 생성 (안전한 파일명으로 변환)
             safe_title = re.sub(r'[^\w\s-]', '', title).strip()
             safe_title = re.sub(r'[-\s]+', '_', safe_title)
@@ -39,16 +58,19 @@ class GitHubManager:
             
             # GitHub에 파일 업로드
             path = f"knowledge/{filename}"
-            return self._upload_file(path, md_content, f"Add knowledge: {title}")
-            
+            ok = self._upload_file(path, md_content, f"Add knowledge: {title}")
+            if not ok:
+                # _upload_file 내부에서 last_error 셋팅됨
+                pass
+            return ok
         except Exception as e:
-            print(f"Error backing up knowledge: {e}")
+            self._set_error("backup_knowledge", exc=e)
             return False
     
     def backup_all_knowledge(self, km) -> bool:
         """모든 지식을 GitHub에 백업"""
         try:
-            # 로컬 knowledge 폴더의 모든 파일을 GitHub에 업로드
+            self._ensure_knowledge_folder()
             knowledge_dir = "./knowledge"
             if not os.path.exists(knowledge_dir):
                 return True
@@ -57,7 +79,8 @@ class GitHubManager:
             total_files = 0
             
             for filename in os.listdir(knowledge_dir):
-                if filename.endswith('.md'):
+                # README.md 제외
+                if filename.endswith('.md') and filename.lower() != "readme.md":
                     total_files += 1
                     filepath = os.path.join(knowledge_dir, filename)
                     
@@ -68,10 +91,17 @@ class GitHubManager:
                     if self._upload_file(github_path, content, f"Backup: {filename}"):
                         success_count += 1
             
-            return success_count == total_files
+            if total_files == 0:
+                self.last_error = "No markdown files to backup in ./knowledge"
+                return False
+            
+            ok = success_count == total_files
+            if not ok:
+                self.last_error = f"Backed up {success_count}/{total_files} files"
+            return ok
             
         except Exception as e:
-            print(f"Error backing up all knowledge: {e}")
+            self._set_error("backup_all_knowledge", exc=e)
             return False
     
     def sync_from_github(self) -> bool:
@@ -81,26 +111,48 @@ class GitHubManager:
             url = f"{self.base_url}/repos/{self.repo}/contents/knowledge"
             response = requests.get(url, headers=self.headers)
             
-            if response.status_code != 200:
+            print(f"GitHub API response status: {response.status_code}")
+            
+            if response.status_code == 404:
+                self._set_error("sync_from_github", response)
+                return False
+            elif response.status_code != 200:
+                self._set_error("sync_from_github", response)
                 return False
             
             files = response.json()
             knowledge_dir = "./knowledge"
             os.makedirs(knowledge_dir, exist_ok=True)
             
+            downloaded_count = 0
+            
             for file_info in files:
-                if file_info['name'].endswith('.md'):
-                    # 파일 내용 다운로드
-                    file_response = requests.get(file_info['download_url'])
-                    if file_response.status_code == 200:
-                        local_path = os.path.join(knowledge_dir, file_info['name'])
-                        with open(local_path, 'w', encoding='utf-8') as f:
-                            f.write(file_response.text)
+                # README.md 파일은 건너뛰기 (대소문자 구분 없이)
+                if (file_info['name'].endswith('.md') and 
+                    file_info['name'].lower() != 'readme.md'):
+                    try:
+                        # 파일 내용 다운로드
+                        file_response = requests.get(file_info['download_url'])
+                        if file_response.status_code == 200:
+                            local_path = os.path.join(knowledge_dir, file_info['name'])
+                            with open(local_path, 'w', encoding='utf-8') as f:
+                                f.write(file_response.text)
+                            downloaded_count += 1
+                            print(f"Downloaded: {file_info['name']}")
+                        else:
+                            self._set_error("download_file", file_response)
+                    except Exception as e:
+                        self._set_error("download_file", exc=e)
+            
+            print(f"Successfully downloaded {downloaded_count} knowledge files")
+            if downloaded_count == 0:
+                self.last_error = "No knowledge files found in GitHub/knowledge (excluding README.md)"
+                return False
             
             return True
             
         except Exception as e:
-            print(f"Error syncing from GitHub: {e}")
+            self._set_error("sync_from_github", exc=e)
             return False
     
     def restore_all_knowledge(self, km) -> bool:
@@ -118,33 +170,49 @@ class GitHubManager:
             return True
             
         except Exception as e:
-            print(f"Error restoring knowledge: {e}")
+            self._set_error("restore_all_knowledge", exc=e)
             return False
     
-    def delete_knowledge_backup(self, filename: str) -> bool:
-        """GitHub에서 지식 백업 파일 삭제"""
+    def delete_knowledge_backup(self, doc_id: str) -> bool:
+        """GitHub에서 지식 백업 파일 삭제 (ID로 파일 찾기)"""
         try:
-            path = f"knowledge/{filename}"
-            url = f"{self.base_url}/repos/{self.repo}/contents/{path}"
-            
-            # 파일 정보 가져오기 (sha 필요)
+            # GitHub의 knowledge 폴더에서 해당 ID로 시작하는 파일 찾기
+            url = f"{self.base_url}/repos/{self.repo}/contents/knowledge"
             response = requests.get(url, headers=self.headers)
+            
             if response.status_code != 200:
+                self._set_error("delete_knowledge_backup(list)", response)
                 return False
             
-            file_info = response.json()
+            files = response.json()
+            target_file = None
+            
+            # doc_id로 시작하는 마크다운 파일 찾기
+            for file_info in files:
+                if file_info['name'].startswith(doc_id) and file_info['name'].endswith('.md'):
+                    target_file = file_info
+                    break
+            
+            if not target_file:
+                self.last_error = f"No backup file starting with {doc_id} found"
+                return False
             
             # 파일 삭제
+            delete_url = f"{self.base_url}/repos/{self.repo}/contents/knowledge/{target_file['name']}"
             data = {
-                "message": f"Delete knowledge: {filename}",
-                "sha": file_info["sha"]
+                "message": f"Delete knowledge: {target_file['name']}",
+                "sha": target_file["sha"]
             }
             
-            delete_response = requests.delete(url, headers=self.headers, json=data)
-            return delete_response.status_code == 200
+            delete_response = requests.delete(delete_url, headers=self.headers, json=data)
+            if delete_response.status_code != 200:
+                self._set_error("delete_knowledge_backup(delete)", delete_response)
+                return False
+            
+            return True
             
         except Exception as e:
-            print(f"Error deleting knowledge backup: {e}")
+            self._set_error("delete_knowledge_backup", exc=e)
             return False
 
     def get_repo_info(self) -> Optional[Dict]:
@@ -164,11 +232,13 @@ class GitHubManager:
                     "language": repo_data.get("language", "Markdown"),
                     "private": repo_data["private"]
                 }
+            else:
+                self._set_error("get_repo_info", response)
             
             return None
             
         except Exception as e:
-            print(f"Error getting repo info: {e}")
+            self._set_error("get_repo_info", exc=e)
             return None
     
     def _upload_file(self, path: str, content: str, commit_message: str) -> bool:
@@ -190,12 +260,123 @@ class GitHubManager:
             # 파일이 존재하면 sha 추가 (업데이트용)
             if response.status_code == 200:
                 existing_file = response.json()
-                data["sha"] = existing_file["sha"]
+                data["sha"] = existing_file.get("sha")
+            elif response.status_code not in (404, 200):
+                # 조회 자체가 실패
+                self._set_error("check_existing(_upload_file)", response)
+                return False
             
             # 파일 업로드/업데이트
             upload_response = requests.put(url, headers=self.headers, json=data)
-            return upload_response.status_code in [200, 201]
+            ok = upload_response.status_code in [200, 201]
+            if not ok:
+                self._set_error("_upload_file(put)", upload_response)
+            return ok
             
         except Exception as e:
-            print(f"Error uploading file: {e}")
+            self._set_error("_upload_file", exc=e)
             return False
+
+    def _ensure_knowledge_folder(self) -> bool:
+        """knowledge 폴더가 없으면 생성"""
+        try:
+            # knowledge 폴더 확인
+            url = f"{self.base_url}/repos/{self.repo}/contents/knowledge"
+            response = requests.get(url, headers=self.headers)
+            
+            if response.status_code == 404:
+                # 폴더가 없으면 README.md 파일로 폴더 생성
+                readme_content = """# 📚 CT실 지식 백업 폴더
+
+이 폴더는 CT실 지식 관리 시스템의 백업 파일들이 저장되는 곳입니다.
+"""
+                
+                readme_path = "knowledge/README.md"
+                success = self._upload_file(readme_path, readme_content, "Create knowledge folder with README")
+                if not success:
+                    # _upload_file에서 last_error 셋팅됨
+                    return False
+                return True
+            elif response.status_code == 200:
+                return True
+            else:
+                self._set_error("_ensure_knowledge_folder", response)
+                return False
+            
+        except Exception as e:
+            self._set_error("_ensure_knowledge_folder", exc=e)
+            return False
+
+    def has_any_remote_knowledge(self) -> bool:
+        """원격에 지식(MD 또는 JSON 스냅샷)이 존재하는지"""
+        try:
+            # JSON 스냅샷 확인
+            if self.has_json_snapshot():
+                return True
+            # MD 파일 확인
+            files = self.list_remote_files()
+            return len(files) > 0
+        except Exception as e:
+            self._set_error("has_any_remote_knowledge", exc=e)
+            return False
+
+    def has_json_snapshot(self) -> bool:
+        """원격에 knowledge_database.json 존재 여부"""
+        try:
+            url = f"{self.base_url}/repos/{self.repo}/contents/knowledge_database.json"
+            resp = requests.get(url, headers=self.headers)
+            return resp.status_code == 200
+        except Exception as e:
+            self._set_error("has_json_snapshot", exc=e)
+            return False
+
+    def backup_json_db(self, km) -> bool:
+        """로컬 JSON DB를 원격에 스냅샷으로 백업"""
+        try:
+            content = json.dumps(km.json_db, ensure_ascii=False, indent=2)
+            return self._upload_file("knowledge_database.json", content, "Backup knowledge_database.json")
+        except Exception as e:
+            self._set_error("backup_json_db", exc=e)
+            return False
+
+    def restore_json_db(self, km) -> bool:
+        """원격 JSON 스냅샷을 로컬로 복원"""
+        try:
+            url = f"{self.base_url}/repos/{self.repo}/contents/knowledge_database.json"
+            resp = requests.get(url, headers=self.headers)
+            if resp.status_code != 200:
+                self._set_error("restore_json_db", resp)
+                return False
+            meta = resp.json()
+            download_url = meta.get("download_url")
+            if not download_url:
+                self.last_error = "No download_url for knowledge_database.json"
+                return False
+            raw = requests.get(download_url)
+            if raw.status_code != 200:
+                self._set_error("restore_json_db(download)", raw)
+                return False
+            # 로컬에 기록 + 메모리에 반영
+            text = raw.text
+            with open("./knowledge_database.json", "w", encoding="utf-8") as f:
+                f.write(text)
+            km.json_db = json.loads(text)
+            km._save_json_db()
+            return True
+        except Exception as e:
+            self._set_error("restore_json_db", exc=e)
+            return False
+
+    def list_remote_files(self) -> List[str]:
+        """GitHub knowledge 폴더의 파일 목록(README 제외)"""
+        try:
+            url = f"{self.base_url}/repos/{self.repo}/contents/knowledge"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code != 200:
+                self._set_error("list_remote_files", response)
+                return []
+            files = response.json()
+            return [f["name"] for f in files if f["name"].endswith(".md") and f["name"].lower() != "readme.md"]
+        except Exception as e:
+            self._set_error("list_remote_files", exc=e)
+            return []
