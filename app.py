@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import base64
 import requests
+import os  # 이 줄 추가
 from datetime import datetime
 
 # Gemini API 추가
