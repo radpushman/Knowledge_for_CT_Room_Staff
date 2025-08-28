@@ -366,6 +366,10 @@ def get_backup_info():
 total_docs = len(st.session_state.knowledge_db["documents"])
 st.sidebar.info(f"📚 총 지식: {total_docs}개")
 
+# 메인 기능 선택을 맨 위로 이동
+st.sidebar.markdown("---")
+mode = st.sidebar.radio("🔧 기능 선택", ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집"])
+
 # GitHub 백업/복원
 st.sidebar.markdown("---")
 st.sidebar.subheader("☁️ GitHub 관리")
@@ -392,14 +396,6 @@ if backup_info:
 else:
     st.sidebar.warning("📅 백업 정보 없음")
 
-if st.sidebar.button("💾 백업"):
-    result = backup_to_github()
-    if "성공" in result:
-        st.sidebar.success(result)
-        st.rerun()  # 백업 후 정보 새로고침
-    else:
-        st.sidebar.error(result)
-
 restore_code = st.sidebar.text_input("복원 코드:", type="password", key="restore")
 
 if st.sidebar.button("📥 복원"):
@@ -416,6 +412,14 @@ if st.sidebar.button("📥 복원"):
             st.sidebar.error(result)
     else:
         st.sidebar.error("복원 코드를 입력하세요")
+
+if st.sidebar.button("💾 백업"):
+    result = backup_to_github()
+    if "성공" in result:
+        st.sidebar.success(result)
+        st.rerun()  # 백업 후 정보 새로고침
+    else:
+        st.sidebar.error(result)
 
 # 자동 백업 설정 (사이드바에 추가)
 st.sidebar.markdown("---")
@@ -437,7 +441,8 @@ if st.secrets.get("GITHUB_TOKEN"):
 else:
     st.sidebar.warning("🔄 자동 백업 비활성화 (토큰 없음)")
 
-# 사이드바에 AI 사용량 표시
+# 사이드바에 AI 사용량 표시 (하단으로 이동)
+st.sidebar.markdown("---")
 if use_gemini:
     usage = load_usage()
     st.sidebar.info(f"🤖 오늘 AI 사용량: {usage['count']}/1,500")
@@ -463,9 +468,6 @@ else:
         st.write(f"use_gemini: {use_gemini}")
 
 # 메인 기능
-st.sidebar.markdown("---")
-mode = st.sidebar.radio("기능 선택", ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집"])
-
 if mode == "💬 질문하기":
     st.header("💬 질문하기")
     
