@@ -4,12 +4,60 @@ import base64
 import requests
 from datetime import datetime
 
+# Gemini API 추가
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 # 페이지 설정
 st.set_page_config(page_title="CT위키", page_icon="🏥", layout="wide")
 st.title("🏥 CT위키")
 
 # 보안 코드 - Secrets에서 가져오거나 기본값 사용 (노출 안됨)
 SECURITY_CODE = st.secrets.get("SECURITY_CODE", "2398")
+
+# Gemini API 설정
+use_gemini = False
+if GEMINI_AVAILABLE:
+    try:
+        api_key = st.secrets.get('GOOGLE_API_KEY')
+        if api_key and api_key != "your_google_gemini_api_key_here":
+            genai.configure(api_key=api_key)
+            use_gemini = True
+    except Exception:
+        pass
+
+# API 사용량 추적
+USAGE_FILE = "api_usage.json"
+
+def load_usage():
+    if os.path.exists(USAGE_FILE):
+        try:
+            with open(USAGE_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {"count": 0, "date": datetime.now().date().isoformat()}
+
+def save_usage(usage_data):
+    try:
+        with open(USAGE_FILE, 'w') as f:
+            json.dump(usage_data, f)
+    except:
+        pass
+
+def increment_usage():
+    usage = load_usage()
+    current_date = datetime.now().date().isoformat()
+    
+    if usage["date"] != current_date:
+        usage = {"count": 0, "date": current_date}
+    
+    usage["count"] += 1
+    save_usage(usage)
+    return usage["count"]
 
 # 세션 상태 초기화
 if 'knowledge_db' not in st.session_state:
@@ -227,25 +275,101 @@ if st.sidebar.button("📥 복원"):
     else:
         st.sidebar.error("복원 코드를 입력하세요")
 
+# 사이드바에 AI 사용량 표시
+if use_gemini:
+    usage = load_usage()
+    st.sidebar.info(f"🤖 오늘 AI 사용량: {usage['count']}/1,500")
+    if usage['count'] >= 1500:
+        st.sidebar.warning("일일 무료 한도 초과!")
+
 # 메인 기능
 st.sidebar.markdown("---")
 mode = st.sidebar.radio("기능 선택", ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집"])
 
 if mode == "💬 질문하기":
     st.header("💬 질문하기")
-    question = st.text_input("궁금한 것을 입력하세요:")
+    question = st.text_input("궁금한 것을 입력하세요:", placeholder="예: 조영제 부작용 대응 방법")
     
     if question:
-        results = search_knowledge(question)
+        # 1단계: 관련 지식 검색
+        with st.spinner("관련 지식을 검색하는 중..."):
+            results = search_knowledge(question)
+        
         if results:
-            st.success(f"🎯 {len(results)}개의 자료를 찾았습니다!")
-            for doc in results:
-                with st.expander(f"📄 {doc['title']} - {doc['category']}"):
+            st.success(f"🎯 {len(results)}개의 관련 자료를 찾았습니다!")
+            
+            # 2단계: Gemini AI 답변 생성 (선택사항)
+            if use_gemini and load_usage()["count"] < 1500:
+                with st.spinner("🤖 AI가 검색된 자료를 분석하여 답변을 생성 중..."):
+                    try:
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
+                        # 검색된 지식을 컨텍스트로 제공
+                        context = "\n\n".join([f"**{doc['title']}**\n{doc['content']}" for doc in results])
+                        
+                        prompt = f"""
+당신은 CT실 전문 지식 어시스턴트입니다.
+
+다음 참고자료를 바탕으로 질문에 답변해주세요:
+
+참고자료:
+{context}
+
+질문: {question}
+
+답변 규칙:
+1. 한국어로 답변
+2. CT실 직원이 이해하기 쉽게 설명
+3. 참고자료에 없는 내용은 추측하지 말고 "참고자료에 없음"이라고 명시
+4. 중요한 안전사항이 있으면 강조
+5. 단계별로 설명이 필요한 경우 번호를 매겨서 설명
+6. 의료적 판단이 필요한 경우 반드시 의료진과 상담하도록 안내
+"""
+                        
+                        response = model.generate_content(prompt)
+                        increment_usage()
+                        
+                        st.markdown("### 🤖 AI 종합 답변")
+                        st.success("✨ Gemini 1.5 Flash가 검색된 자료를 분석하여 답변을 재구성했습니다.")
+                        st.markdown(response.text)
+                        
+                        with st.expander("ℹ️ AI 답변에 대한 주의사항"):
+                            st.warning("""
+                            **중요:** 
+                            - AI 답변은 등록된 지식 자료를 바탕으로 생성됩니다
+                            - 의료적 판단이 필요한 경우 반드시 의료진과 상담하세요
+                            - 응급상황에서는 기존 프로토콜을 우선 적용하세요
+                            """)
+                        
+                        current_usage = load_usage()["count"]
+                        st.info(f"💡 오늘 AI 사용량: {current_usage}/1,500 (무료)")
+                        
+                    except Exception as e:
+                        st.error(f"AI 답변 생성 실패: {e}")
+                        st.info("AI 답변 생성에 실패했지만, 아래 검색된 자료를 확인하세요.")
+            
+            elif not use_gemini:
+                with st.expander("🤖 AI 답변 기능 활성화하기"):
+                    st.info("""
+                    **Gemini 1.5 Flash AI 답변 기능을 사용하려면:**
+                    1. Google AI Studio에서 무료 API 키 발급
+                    2. Streamlit Secrets에 GOOGLE_API_KEY 추가
+                    3. **일일 1,500회 무료**로 AI 답변 이용 가능
+                    """)
+            
+            elif load_usage()["count"] >= 1500:
+                st.warning("🚫 오늘의 AI 사용량을 모두 소진했습니다. 내일 다시 이용해주세요.")
+            
+            # 3단계: 원본 검색 결과 표시
+            st.markdown("### 📋 검색된 원본 자료")
+            for i, doc in enumerate(results):
+                with st.expander(f"📄 {doc['title']} - {doc['category']} ({doc.get('score', 0)}점)"):
                     st.markdown(doc['content'])
                     if doc.get('tags'):
                         st.caption(f"태그: {doc['tags']}")
         else:
             st.warning("관련 자료를 찾을 수 없습니다.")
+            st.info("💡 새로운 지식을 추가해서 데이터베이스를 확장해보세요!")
 
 elif mode == "📝 지식 추가":
     st.header("📝 지식 추가")
@@ -325,6 +449,8 @@ elif mode == "✏️ 지식 편집":
 st.markdown("---")
 st.markdown("""
 ### 💾 사용 안내
+- **🤖 AI 질의응답**: Gemini 1.5 Flash로 스마트한 답변 생성 (일일 1,500회 무료)
+- **🔍 키워드 검색**: 등록된 지식에서 관련 자료 즉시 검색
 - **리부트 시 보존**: 앱 시작 시 GitHub에서 자동 복원
 - **수동 백업**: 사이드바 "백업" 버튼 클릭  
 - **수동 복원**: 관리자 코드 입력 후 "복원" 버튼
