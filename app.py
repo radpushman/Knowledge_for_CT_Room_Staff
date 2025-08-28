@@ -248,6 +248,41 @@ def restore_from_github(security_code):
     except Exception as e:
         return f"❌ 복원 오류: {str(e)}"
 
+# 백업 시간 확인 함수 추가
+def get_backup_info():
+    """GitHub 백업 파일의 최종 백업 시간 확인"""
+    try:
+        token = st.secrets.get("GITHUB_TOKEN")
+        if not token:
+            return None
+        
+        url = f"https://api.github.com/repos/radpushman/Knowledge_for_CT_Room_Staff/contents/ct_knowledge_backup.json"
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            file_info = response.json()
+            # GitHub API에서 파일 수정 시간 가져오기
+            content_response = requests.get(file_info["download_url"], timeout=10)
+            if content_response.status_code == 200:
+                backup_data = json.loads(content_response.text)
+                backup_time = backup_data.get("backup_time")
+                total_docs = backup_data.get("total_documents", 0)
+                
+                if backup_time:
+                    # ISO 시간을 읽기 쉬운 형태로 변환
+                    from datetime import datetime
+                    backup_dt = datetime.fromisoformat(backup_time.replace('Z', '+00:00'))
+                    formatted_time = backup_dt.strftime('%Y년 %m월 %d일 %H:%M')
+                    return {
+                        "backup_time": formatted_time,
+                        "total_docs": total_docs,
+                        "raw_time": backup_time
+                    }
+        return None
+    except Exception as e:
+        return None
+
 # 사이드바
 total_docs = len(st.session_state.knowledge_db["documents"])
 st.sidebar.info(f"📚 총 지식: {total_docs}개")
@@ -256,10 +291,22 @@ st.sidebar.info(f"📚 총 지식: {total_docs}개")
 st.sidebar.markdown("---")
 st.sidebar.subheader("☁️ GitHub 관리")
 
+# 백업 정보 표시
+backup_info = get_backup_info()
+if backup_info:
+    st.sidebar.info(f"""
+📅 **최종 백업**
+{backup_info['backup_time']}
+📄 {backup_info['total_docs']}개 문서
+""")
+else:
+    st.sidebar.warning("📅 백업 정보 없음")
+
 if st.sidebar.button("💾 백업"):
     result = backup_to_github()
     if "성공" in result:
         st.sidebar.success(result)
+        st.rerun()  # 백업 후 정보 새로고침
     else:
         st.sidebar.error(result)
 
@@ -267,6 +314,10 @@ restore_code = st.sidebar.text_input("복원 코드:", type="password", key="res
 
 if st.sidebar.button("📥 복원"):
     if restore_code:
+        # 복원 전에 백업 정보 확인하여 사용자에게 알림
+        if backup_info:
+            st.sidebar.info(f"📥 {backup_info['backup_time']} 백업을 복원합니다...")
+        
         result = restore_from_github(restore_code)
         if "성공" in result:
             st.sidebar.success(result)
@@ -487,8 +538,18 @@ elif mode == "✏️ 지식 편집":
 
 # 하단 정보
 st.markdown("---")
+st.markdown("### 💾 사용 안내")
+
+# 백업 상태 추가
+if backup_info:
+    st.info(f"""
+**📅 현재 백업 상태**  
+최종 백업: {backup_info['backup_time']} ({backup_info['total_docs']}개 문서)
+""")
+else:
+    st.warning("⚠️ GitHub 백업이 없습니다. 백업을 권장합니다.")
+
 st.markdown("""
-### 💾 사용 안내
 - **🤖 AI 질의응답**: Gemini 1.5 Flash로 스마트한 답변 생성 (일일 1,500회 무료)
 - **🔍 키워드 검색**: 등록된 지식에서 관련 자료 즉시 검색
 - **리부트 시 보존**: 앱 시작 시 GitHub에서 자동 복원
