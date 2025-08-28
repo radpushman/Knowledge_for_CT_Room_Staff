@@ -331,8 +331,9 @@ if mode == "💬 질문하기":
                     try:
                         model = genai.GenerativeModel('gemini-1.5-flash')
                         
-                        // ...existing code...
-
+                        # 검색된 지식을 컨텍스트로 제공
+                        context = "\n\n".join([f"**{doc['title']}**\n{doc['content']}" for doc in results])
+                        
                         prompt = f"""
 당신은 CT실의 친근한 선배 동료입니다.
 
@@ -356,8 +357,6 @@ if mode == "💬 질문하기":
 - "조영제" → 조영제 종류, 사용법, 부작용 대응까지 종합적으로 설명
 - "프로토콜" → 해당 프로토콜의 목적, 절차, 주의사항을 단계별로 설명
 """
-
-                        // ...existing code...
 
                         response = model.generate_content(prompt)
                         increment_usage()
