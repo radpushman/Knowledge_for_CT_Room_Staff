@@ -8,8 +8,11 @@ from datetime import datetime
 st.set_page_config(page_title="CT위키", page_icon="🏥", layout="wide")
 st.title("🏥 CT위키")
 
-# 보안 코드
-SECURITY_CODE = st.secrets.get("SECURITY_CODE", "2398")
+# 보안 코드 - Secrets에서만 가져오기
+SECURITY_CODE = st.secrets.get("SECURITY_CODE", None)
+if not SECURITY_CODE:
+    st.error("⚠️ 보안 코드가 설정되지 않았습니다. 관리자에게 문의하세요.")
+    st.stop()
 
 # 세션 상태 초기화 (리부트 시 유지)
 if 'knowledge_db' not in st.session_state:
@@ -40,7 +43,7 @@ if 'auto_restored' not in st.session_state:
                     restored_db = backup_data.get("knowledge_db", {})
                     if restored_db and "documents" in restored_db:
                         st.session_state.knowledge_db = restored_db
-                        st.toast(f"✅ GitHub에서 {len(restored_db['documents'])}개 지식 복원 완료!")
+                        st.success(f"✅ GitHub에서 {len(restored_db['documents'])}개 지식 복원 완료!")
     except Exception as e:
         print(f"Auto restore failed: {e}")
     
@@ -137,12 +140,32 @@ def delete_knowledge(doc_id):
         return True
     return False
 
-# 간단한 GitHub 백업
+# 강화된 GitHub 백업
 def backup_to_github():
     try:
-        token = st.secrets["GITHUB_TOKEN"]
+        # 토큰 검증
+        token = st.secrets.get("GITHUB_TOKEN")
+        if not token:
+            return "❌ GitHub 토큰이 설정되지 않았습니다."
+        
         repo = st.secrets.get("GITHUB_REPO", "radpushman/Knowledge_for_CT_Room_Staff")
         
+        # 토큰 유효성 먼저 확인
+        test_url = f"https://api.github.com/repos/{repo}"
+        test_headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        test_response = requests.get(test_url, headers=test_headers, timeout=10)
+        if test_response.status_code == 404:
+            return "❌ 저장소를 찾을 수 없습니다. GITHUB_REPO 설정을 확인하세요."
+        elif test_response.status_code == 401:
+            return "❌ GitHub 토큰이 유효하지 않습니다."
+        elif test_response.status_code != 200:
+            return f"❌ GitHub 접근 실패: {test_response.status_code}"
+        
+        # 백업 데이터 준비
         backup_data = {
             "backup_time": datetime.now().isoformat(),
             "total_documents": len(st.session_state.knowledge_db["documents"]),
@@ -167,14 +190,21 @@ def backup_to_github():
         
         if response.status_code == 200:
             data["sha"] = response.json()["sha"]
+        elif response.status_code != 404:
+            return f"❌ 파일 상태 확인 실패: {response.status_code}"
         
         backup_response = requests.put(url, headers=headers, json=data, timeout=30)
         
         if backup_response.status_code in [200, 201]:
             return f"✅ 백업 성공! ({len(st.session_state.knowledge_db['documents'])}개 문서)"
+        elif backup_response.status_code == 403:
+            return "❌ 권한 부족: GitHub 토큰에 repo 쓰기 권한이 필요합니다."
         else:
-            return f"❌ 백업 실패: {backup_response.status_code}"
+            error_msg = backup_response.json().get('message', '') if backup_response.headers.get('content-type', '').startswith('application/json') else backup_response.text[:100]
+            return f"❌ 백업 실패: {backup_response.status_code} - {error_msg}"
             
+    except requests.exceptions.Timeout:
+        return "❌ 백업 시간 초과: 네트워크를 확인하세요."
     except Exception as e:
         return f"❌ 백업 오류: {str(e)}"
 
@@ -227,6 +257,13 @@ st.sidebar.info(f"📚 총 지식: {total_docs}개")
 st.sidebar.markdown("---")
 st.sidebar.subheader("☁️ GitHub 백업/복원")
 
+# GitHub 상태 확인
+github_status = "❌ 미설정"
+if st.secrets.get("GITHUB_TOKEN"):
+    github_status = "✅ 연결됨"
+
+st.sidebar.info(f"GitHub 상태: {github_status}")
+
 if st.sidebar.button("💾 GitHub에 백업"):
     result = backup_to_github()
     if "성공" in result:
@@ -234,8 +271,8 @@ if st.sidebar.button("💾 GitHub에 백업"):
     else:
         st.sidebar.error(result)
 
-st.sidebar.markdown("**📥 복원 (보안 코드 필요)**")
-restore_code = st.sidebar.text_input("복원 보안 코드:", type="password", key="restore_security")
+st.sidebar.markdown("**📥 복원 (관리자 전용)**")
+restore_code = st.sidebar.text_input("관리자 코드:", type="password", key="restore_security")
 
 if st.sidebar.button("📥 GitHub에서 복원"):
     if restore_code:
@@ -246,7 +283,7 @@ if st.sidebar.button("📥 GitHub에서 복원"):
         else:
             st.sidebar.error(result)
     else:
-        st.sidebar.error("보안 코드를 입력하세요.")
+        st.sidebar.error("관리자 코드를 입력하세요.")
 
 # 메인 기능
 st.sidebar.markdown("---")
@@ -354,6 +391,11 @@ st.markdown("### 💾 데이터 보존 안내")
 st.markdown("""
 **🔄 자동 복원**: 앱 시작 시 GitHub에서 자동으로 지식 복원  
 **💾 수동 백업**: 사이드바에서 "GitHub에 백업" 클릭  
-**📥 보안 복원**: 보안 코드(2398)로 수동 복원 가능  
+**📥 관리자 복원**: 관리자 코드로 수동 복원 가능  
 **⚠️ 주의**: 정기적으로 GitHub 백업을 권장합니다.
+
+**🔧 백업 문제 해결:**
+- 404 오류: GitHub 토큰 권한 확인 필요
+- 403 오류: 토큰에 repo 쓰기 권한 필요
+- 관리자에게 GitHub 설정 문의
 """)
