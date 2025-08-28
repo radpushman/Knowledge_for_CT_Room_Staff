@@ -2,8 +2,9 @@ import streamlit as st
 import json
 import base64
 import requests
-import os  # 이 줄 추가
-from datetime import datetime
+import os
+import time
+from datetime import datetime, timedelta
 
 # Gemini API 추가
 try:
@@ -59,6 +60,59 @@ def increment_usage():
     usage["count"] += 1
     save_usage(usage)
     return usage["count"]
+
+# 자동 백업 설정
+AUTO_BACKUP_INTERVAL = 30  # 30분 간격
+AUTO_BACKUP_KEY = "last_auto_backup"
+
+def should_auto_backup():
+    """자동 백업이 필요한지 확인"""
+    try:
+        if AUTO_BACKUP_KEY not in st.session_state:
+            st.session_state[AUTO_BACKUP_KEY] = datetime.now()
+            return True
+        
+        last_backup = st.session_state[AUTO_BACKUP_KEY]
+        now = datetime.now()
+        
+        # 30분이 지났는지 확인
+        if (now - last_backup).total_seconds() > AUTO_BACKUP_INTERVAL * 60:
+            return True
+        
+        return False
+    except:
+        return False
+
+def perform_auto_backup():
+    """자동 백업 실행"""
+    try:
+        # GitHub 토큰이 있는 경우에만 실행
+        token = st.secrets.get("GITHUB_TOKEN")
+        if not token:
+            return False
+        
+        # 데이터 변경이 있는 경우에만 백업
+        current_docs = len(st.session_state.knowledge_db["documents"])
+        if current_docs == 0:
+            return False
+        
+        # 백업 실행
+        result = backup_to_github()
+        
+        if "성공" in result:
+            st.session_state[AUTO_BACKUP_KEY] = datetime.now()
+            # 조용한 알림 (너무 방해하지 않게)
+            with st.sidebar:
+                st.success("🔄 자동 백업 완료", icon="✅")
+            return True
+        else:
+            # 실패 시에도 시간 업데이트 (무한 재시도 방지)
+            st.session_state[AUTO_BACKUP_KEY] = datetime.now()
+            return False
+            
+    except Exception as e:
+        st.session_state[AUTO_BACKUP_KEY] = datetime.now()
+        return False
 
 # 세션 상태 초기화
 if 'knowledge_db' not in st.session_state:
@@ -117,6 +171,12 @@ if 'restored' not in st.session_state:
     
     st.session_state.restored = True
 
+# 자동 백업 체크 (앱 로드 시)
+if 'auto_backup_checked' not in st.session_state:
+    if should_auto_backup():
+        perform_auto_backup()
+    st.session_state.auto_backup_checked = True
+
 # 지식 관리 함수들
 def add_knowledge(title, content, category, tags):
     doc_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{abs(hash(title)) % 10000}"
@@ -128,6 +188,16 @@ def add_knowledge(title, content, category, tags):
         "tags": tags,
         "created_at": datetime.now().isoformat()
     }
+    
+    # 즉시 백업 옵션 (중요한 변경사항)
+    token = st.secrets.get("GITHUB_TOKEN")
+    if token and len(st.session_state.knowledge_db["documents"]) <= 5:  # 문서가 적으면 즉시 백업
+        try:
+            backup_to_github()
+            st.session_state[AUTO_BACKUP_KEY] = datetime.now()
+        except:
+            pass
+    
     return True
 
 def search_knowledge(query):
@@ -300,13 +370,24 @@ st.sidebar.info(f"📚 총 지식: {total_docs}개")
 st.sidebar.markdown("---")
 st.sidebar.subheader("☁️ GitHub 관리")
 
-# 백업 정보 표시
+# 백업 정보 표시 (자동 백업 상태 추가)
 backup_info = get_backup_info()
 if backup_info:
+    # 다음 자동 백업 시간 계산
+    next_backup = st.session_state.get(AUTO_BACKUP_KEY, datetime.now()) + timedelta(minutes=AUTO_BACKUP_INTERVAL)
+    time_until_backup = next_backup - datetime.now()
+    
+    if time_until_backup.total_seconds() > 0:
+        minutes_left = int(time_until_backup.total_seconds() / 60)
+        backup_status = f"🔄 {minutes_left}분 후 자동백업"
+    else:
+        backup_status = "🔄 자동백업 대기중"
+    
     st.sidebar.info(f"""
 📅 **최종 백업**
 {backup_info['backup_time']} (서울시간)
 📄 {backup_info['total_docs']}개 문서
+{backup_status}
 """)
 else:
     st.sidebar.warning("📅 백업 정보 없음")
@@ -335,6 +416,26 @@ if st.sidebar.button("📥 복원"):
             st.sidebar.error(result)
     else:
         st.sidebar.error("복원 코드를 입력하세요")
+
+# 자동 백업 설정 (사이드바에 추가)
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚙️ 백업 설정")
+
+# 자동 백업 상태 표시
+if st.secrets.get("GITHUB_TOKEN"):
+    st.sidebar.success("🔄 자동 백업 활성화 (30분 간격)")
+    
+    # 수동으로 자동 백업 트리거
+    if st.sidebar.button("🔄 지금 자동백업 실행"):
+        with st.sidebar:
+            with st.spinner("백업 중..."):
+                if perform_auto_backup():
+                    st.success("백업 완료!")
+                    st.rerun()
+                else:
+                    st.error("백업 실패")
+else:
+    st.sidebar.warning("🔄 자동 백업 비활성화 (토큰 없음)")
 
 # 사이드바에 AI 사용량 표시
 if use_gemini:
@@ -551,14 +652,26 @@ st.markdown("### 💾 사용 안내")
 
 # 백업 상태 추가
 if backup_info:
+    # 자동 백업 상태 계산
+    next_backup = st.session_state.get(AUTO_BACKUP_KEY, datetime.now()) + timedelta(minutes=AUTO_BACKUP_INTERVAL)
+    time_until = next_backup - datetime.now()
+    
+    if time_until.total_seconds() > 0:
+        minutes_left = int(time_until.total_seconds() / 60)
+        auto_status = f"다음 자동백업: {minutes_left}분 후"
+    else:
+        auto_status = "자동백업 준비됨"
+    
     st.info(f"""
 **📅 현재 백업 상태**  
-최종 백업: {backup_info['backup_time']} (서울시간) ({backup_info['total_docs']}개 문서)
+최종 백업: {backup_info['backup_time']} (서울시간) ({backup_info['total_docs']}개 문서)  
+자동 백업: 30분 간격 활성화 ({auto_status})
 """)
 else:
     st.warning("⚠️ GitHub 백업이 없습니다. 백업을 권장합니다.")
 
 st.markdown("""
+- **🔄 자동 백업**: 30분마다 GitHub에 자동 백업 (토큰 설정 시)
 - **🤖 AI 질의응답**: Gemini 1.5 Flash로 스마트한 답변 생성 (일일 1,500회 무료)
 - **🔍 키워드 검색**: 등록된 지식에서 관련 자료 즉시 검색
 - **리부트 시 보존**: 앱 시작 시 GitHub에서 자동 복원
