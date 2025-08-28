@@ -270,10 +270,19 @@ def get_backup_info():
                 total_docs = backup_data.get("total_documents", 0)
                 
                 if backup_time:
-                    # ISO 시간을 읽기 쉬운 형태로 변환
-                    from datetime import datetime
+                    # ISO 시간을 서울 시간으로 변환
+                    from datetime import datetime, timezone, timedelta
+                    
+                    # UTC 시간을 datetime 객체로 변환
                     backup_dt = datetime.fromisoformat(backup_time.replace('Z', '+00:00'))
-                    formatted_time = backup_dt.strftime('%Y년 %m월 %d일 %H:%M')
+                    
+                    # 서울 시간대 (UTC+9) 적용
+                    seoul_tz = timezone(timedelta(hours=9))
+                    seoul_time = backup_dt.astimezone(seoul_tz)
+                    
+                    # 서울 시간으로 포맷팅
+                    formatted_time = seoul_time.strftime('%m월 %d일 %H:%M')
+                    
                     return {
                         "backup_time": formatted_time,
                         "total_docs": total_docs,
@@ -296,7 +305,7 @@ backup_info = get_backup_info()
 if backup_info:
     st.sidebar.info(f"""
 📅 **최종 백업**
-{backup_info['backup_time']}
+{backup_info['backup_time']} (서울시간)
 📄 {backup_info['total_docs']}개 문서
 """)
 else:
@@ -544,7 +553,7 @@ st.markdown("### 💾 사용 안내")
 if backup_info:
     st.info(f"""
 **📅 현재 백업 상태**  
-최종 백업: {backup_info['backup_time']} ({backup_info['total_docs']}개 문서)
+최종 백업: {backup_info['backup_time']} (서울시간) ({backup_info['total_docs']}개 문서)
 """)
 else:
     st.warning("⚠️ GitHub 백업이 없습니다. 백업을 권장합니다.")
