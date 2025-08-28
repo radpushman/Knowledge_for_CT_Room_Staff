@@ -8,56 +8,47 @@ from datetime import datetime
 st.set_page_config(page_title="CT위키", page_icon="🏥", layout="wide")
 st.title("🏥 CT위키")
 
-# 보안 코드 - Secrets에서만 가져오기
-SECURITY_CODE = st.secrets.get("SECURITY_CODE", None)
-if not SECURITY_CODE:
-    st.error("⚠️ 보안 코드가 설정되지 않았습니다. 관리자에게 문의하세요.")
-    st.stop()
+# 간단한 보안 코드 (하드코딩으로 확실하게)
+SECURITY_CODE = "2398"
 
-# 세션 상태 초기화 (리부트 시 유지)
+# 세션 상태 초기화
 if 'knowledge_db' not in st.session_state:
     st.session_state.knowledge_db = {
         "documents": {},
         "last_updated": datetime.now().isoformat()
     }
 
-# 앱 시작 시 GitHub에서 자동 복원 시도
-if 'auto_restored' not in st.session_state:
+# 앱 시작 시 GitHub 자동 복원 (간단 버전)
+if 'restored' not in st.session_state:
     try:
         token = st.secrets.get("GITHUB_TOKEN")
-        repo = st.secrets.get("GITHUB_REPO", "radpushman/Knowledge_for_CT_Room_Staff")
-        
         if token:
-            url = f"https://api.github.com/repos/{repo}/contents/ct_knowledge_backup.json"
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github.v3+json"
-            }
+            url = f"https://api.github.com/repos/radpushman/Knowledge_for_CT_Room_Staff/contents/ct_knowledge_backup.json"
+            headers = {"Authorization": f"Bearer {token}"}
             
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=5)
             if response.status_code == 200:
                 file_info = response.json()
-                content_response = requests.get(file_info["download_url"], timeout=10)
+                content_response = requests.get(file_info["download_url"], timeout=5)
                 if content_response.status_code == 200:
                     backup_data = json.loads(content_response.text)
-                    restored_db = backup_data.get("knowledge_db", {})
-                    if restored_db and "documents" in restored_db:
-                        st.session_state.knowledge_db = restored_db
-                        st.success(f"✅ GitHub에서 {len(restored_db['documents'])}개 지식 복원 완료!")
-    except Exception as e:
-        print(f"Auto restore failed: {e}")
+                    if "knowledge_db" in backup_data:
+                        st.session_state.knowledge_db = backup_data["knowledge_db"]
+                        st.success(f"✅ GitHub에서 {len(backup_data['knowledge_db']['documents'])}개 지식 복원!")
+    except:
+        pass  # 복원 실패해도 무시
     
-    # 복원 시도가 실패했거나 데이터가 없으면 기본 지식 로드
+    # 복원 실패하거나 지식이 없으면 기본 지식 로드
     if len(st.session_state.knowledge_db["documents"]) == 0:
         default_docs = [
             {
                 "title": "CT 스캔 기본 프로토콜",
-                "category": "프로토콜", 
+                "category": "프로토콜",
                 "content": "CT 스캔의 기본적인 촬영 순서와 환자 준비사항입니다.\n\n1. 환자 확인 및 동의서 작성\n2. 금속 제거 확인\n3. 조영제 주입 여부 확인\n4. 환자 위치 설정\n5. 스캔 범위 설정\n6. 촬영 실시",
                 "tags": "기본, 프로토콜, 촬영"
             },
             {
-                "title": "조영제 부작용 대응",
+                "title": "조영제 부작용 대응", 
                 "category": "응급상황",
                 "content": "조영제 투여 후 발생할 수 있는 부작용과 대응방법입니다.\n\n**경미한 반응:**\n- 구역, 구토\n- 두드러기\n- 가려움\n\n**중증 반응:**\n- 호흡곤란\n- 혈압 저하\n- 의식 저하\n\n즉시 의료진 호출 및 응급처치 실시",
                 "tags": "조영제, 응급, 부작용"
@@ -65,7 +56,7 @@ if 'auto_restored' not in st.session_state:
         ]
         
         for i, doc in enumerate(default_docs):
-            doc_id = f"default_{i+1}_{datetime.now().strftime('%Y%m%d')}"
+            doc_id = f"default_{i+1}"
             st.session_state.knowledge_db["documents"][doc_id] = {
                 "id": doc_id,
                 "title": doc["title"],
@@ -75,7 +66,7 @@ if 'auto_restored' not in st.session_state:
                 "created_at": datetime.now().isoformat()
             }
     
-    st.session_state.auto_restored = True
+    st.session_state.restored = True
 
 # 지식 관리 함수들
 def add_knowledge(title, content, category, tags):
@@ -88,7 +79,6 @@ def add_knowledge(title, content, category, tags):
         "tags": tags,
         "created_at": datetime.now().isoformat()
     }
-    st.session_state.knowledge_db["last_updated"] = datetime.now().isoformat()
     return True
 
 def search_knowledge(query):
@@ -129,43 +119,22 @@ def update_knowledge(doc_id, title, content, category, tags):
             "created_at": old_created,
             "updated_at": datetime.now().isoformat()
         }
-        st.session_state.knowledge_db["last_updated"] = datetime.now().isoformat()
         return True
     return False
 
 def delete_knowledge(doc_id):
     if doc_id in st.session_state.knowledge_db["documents"]:
         del st.session_state.knowledge_db["documents"][doc_id]
-        st.session_state.knowledge_db["last_updated"] = datetime.now().isoformat()
         return True
     return False
 
-# 강화된 GitHub 백업
+# 간단한 GitHub 백업
 def backup_to_github():
     try:
-        # 토큰 검증
         token = st.secrets.get("GITHUB_TOKEN")
         if not token:
-            return "❌ GitHub 토큰이 설정되지 않았습니다."
+            return "❌ GitHub 토큰이 설정되지 않았습니다"
         
-        repo = st.secrets.get("GITHUB_REPO", "radpushman/Knowledge_for_CT_Room_Staff")
-        
-        # 토큰 유효성 먼저 확인
-        test_url = f"https://api.github.com/repos/{repo}"
-        test_headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        
-        test_response = requests.get(test_url, headers=test_headers, timeout=10)
-        if test_response.status_code == 404:
-            return "❌ 저장소를 찾을 수 없습니다. GITHUB_REPO 설정을 확인하세요."
-        elif test_response.status_code == 401:
-            return "❌ GitHub 토큰이 유효하지 않습니다."
-        elif test_response.status_code != 200:
-            return f"❌ GitHub 접근 실패: {test_response.status_code}"
-        
-        # 백업 데이터 준비
         backup_data = {
             "backup_time": datetime.now().isoformat(),
             "total_documents": len(st.session_state.knowledge_db["documents"]),
@@ -175,77 +144,58 @@ def backup_to_github():
         content = json.dumps(backup_data, ensure_ascii=False, indent=2)
         content_b64 = base64.b64encode(content.encode('utf-8')).decode('utf-8')
         
-        url = f"https://api.github.com/repos/{repo}/contents/ct_knowledge_backup.json"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
+        url = f"https://api.github.com/repos/radpushman/Knowledge_for_CT_Room_Staff/contents/ct_knowledge_backup.json"
+        headers = {"Authorization": f"Bearer {token}"}
         
         # 기존 파일 확인
-        response = requests.get(url, headers=headers, timeout=30)
+        response = requests.get(url, headers=headers, timeout=10)
         data = {
-            "message": f"Backup CT knowledge - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ({len(st.session_state.knowledge_db['documents'])}개 문서)",
+            "message": f"Backup - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "content": content_b64
         }
         
         if response.status_code == 200:
             data["sha"] = response.json()["sha"]
-        elif response.status_code != 404:
-            return f"❌ 파일 상태 확인 실패: {response.status_code}"
         
-        backup_response = requests.put(url, headers=headers, json=data, timeout=30)
+        backup_response = requests.put(url, headers=headers, json=data, timeout=10)
         
         if backup_response.status_code in [200, 201]:
             return f"✅ 백업 성공! ({len(st.session_state.knowledge_db['documents'])}개 문서)"
-        elif backup_response.status_code == 403:
-            return "❌ 권한 부족: GitHub 토큰에 repo 쓰기 권한이 필요합니다."
         else:
-            error_msg = backup_response.json().get('message', '') if backup_response.headers.get('content-type', '').startswith('application/json') else backup_response.text[:100]
-            return f"❌ 백업 실패: {backup_response.status_code} - {error_msg}"
-            
-    except requests.exceptions.Timeout:
-        return "❌ 백업 시간 초과: 네트워크를 확인하세요."
+            return f"❌ 백업 실패: {backup_response.status_code}"
     except Exception as e:
         return f"❌ 백업 오류: {str(e)}"
 
-# 보안 코드 필요한 복원
+# 간단한 복원
 def restore_from_github(security_code):
     if security_code != SECURITY_CODE:
-        return "❌ 잘못된 보안 코드입니다."
+        return "❌ 잘못된 보안 코드입니다"
     
     try:
-        token = st.secrets["GITHUB_TOKEN"]
-        repo = st.secrets.get("GITHUB_REPO", "radpushman/Knowledge_for_CT_Room_Staff")
+        token = st.secrets.get("GITHUB_TOKEN")
+        if not token:
+            return "❌ GitHub 토큰이 설정되지 않았습니다"
         
-        url = f"https://api.github.com/repos/{repo}/contents/ct_knowledge_backup.json"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
+        url = f"https://api.github.com/repos/radpushman/Knowledge_for_CT_Room_Staff/contents/ct_knowledge_backup.json"
+        headers = {"Authorization": f"Bearer {token}"}
         
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code == 404:
-            return "❌ GitHub에 백업 파일이 없습니다."
-        elif response.status_code != 200:
-            return f"❌ GitHub 접근 실패: {response.status_code}"
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return f"❌ 백업 파일 없음: {response.status_code}"
         
         file_info = response.json()
-        content_response = requests.get(file_info["download_url"], timeout=30)
+        content_response = requests.get(file_info["download_url"], timeout=10)
         
         if content_response.status_code == 200:
             backup_data = json.loads(content_response.text)
-            restored_db = backup_data.get("knowledge_db", {})
-            
-            if restored_db and "documents" in restored_db:
-                st.session_state.knowledge_db = restored_db
-                doc_count = len(restored_db["documents"])
-                backup_time = backup_data.get("backup_time", "알 수 없음")
-                return f"✅ 복원 성공! {doc_count}개 문서 복원 (백업일시: {backup_time[:16]})"
+            if "knowledge_db" in backup_data:
+                st.session_state.knowledge_db = backup_data["knowledge_db"]
+                doc_count = len(backup_data["knowledge_db"]["documents"])
+                return f"✅ 복원 성공! {doc_count}개 문서"
             else:
-                return "❌ 유효하지 않은 백업 데이터입니다."
+                return "❌ 잘못된 백업 데이터"
         else:
-            return f"❌ 백업 파일 다운로드 실패: {content_response.status_code}"
-            
+            return f"❌ 다운로드 실패: {content_response.status_code}"
     except Exception as e:
         return f"❌ 복원 오류: {str(e)}"
 
@@ -255,26 +205,18 @@ st.sidebar.info(f"📚 총 지식: {total_docs}개")
 
 # GitHub 백업/복원
 st.sidebar.markdown("---")
-st.sidebar.subheader("☁️ GitHub 백업/복원")
+st.sidebar.subheader("☁️ GitHub 관리")
 
-# GitHub 상태 확인
-github_status = "❌ 미설정"
-if st.secrets.get("GITHUB_TOKEN"):
-    github_status = "✅ 연결됨"
-
-st.sidebar.info(f"GitHub 상태: {github_status}")
-
-if st.sidebar.button("💾 GitHub에 백업"):
+if st.sidebar.button("💾 백업"):
     result = backup_to_github()
     if "성공" in result:
         st.sidebar.success(result)
     else:
         st.sidebar.error(result)
 
-st.sidebar.markdown("**📥 복원 (관리자 전용)**")
-restore_code = st.sidebar.text_input("관리자 코드:", type="password", key="restore_security")
+restore_code = st.sidebar.text_input("복원 코드 (2398):", type="password", key="restore")
 
-if st.sidebar.button("📥 GitHub에서 복원"):
+if st.sidebar.button("📥 복원"):
     if restore_code:
         result = restore_from_github(restore_code)
         if "성공" in result:
@@ -283,21 +225,20 @@ if st.sidebar.button("📥 GitHub에서 복원"):
         else:
             st.sidebar.error(result)
     else:
-        st.sidebar.error("관리자 코드를 입력하세요.")
+        st.sidebar.error("복원 코드를 입력하세요")
 
 # 메인 기능
 st.sidebar.markdown("---")
-mode = st.sidebar.radio("🔧 기능 선택", ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집"])
+mode = st.sidebar.radio("기능 선택", ["💬 질문하기", "📝 지식 추가", "📚 지식 검색", "✏️ 지식 편집"])
 
-# 질문하기
 if mode == "💬 질문하기":
-    st.header("💬 말하듯 질문해요")
-    question = st.text_input("궁금한 것을 입력하세요:", placeholder="예: 조영제 부작용")
+    st.header("💬 질문하기")
+    question = st.text_input("궁금한 것을 입력하세요:")
     
     if question:
         results = search_knowledge(question)
         if results:
-            st.success(f"🎯 {len(results)}개의 관련 자료를 찾았습니다!")
+            st.success(f"🎯 {len(results)}개의 자료를 찾았습니다!")
             for doc in results:
                 with st.expander(f"📄 {doc['title']} - {doc['category']}"):
                     st.markdown(doc['content'])
@@ -306,71 +247,66 @@ if mode == "💬 질문하기":
         else:
             st.warning("관련 자료를 찾을 수 없습니다.")
 
-# 지식 추가
 elif mode == "📝 지식 추가":
-    st.header("📝 새로운 지식 추가")
-    security_input = st.text_input("보안 코드:", type="password", key="security_add")
+    st.header("📝 지식 추가")
+    security_input = st.text_input("보안 코드:", type="password", key="add_security")
     
     if security_input == SECURITY_CODE:
         st.success("✅ 승인됨")
-        with st.form("add_knowledge_form"):
+        with st.form("add_form"):
             title = st.text_input("제목:")
             category = st.selectbox("카테고리:", ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"])
-            content = st.text_area("내용:", height=250)
-            tags = st.text_input("태그 (쉼표로 구분):")
-            submitted = st.form_submit_button("➕ 지식 추가")
+            content = st.text_area("내용:", height=200)
+            tags = st.text_input("태그:")
             
-            if submitted and title and content:
+            if st.form_submit_button("➕ 추가") and title and content:
                 add_knowledge(title, content, category, tags)
-                st.success("✅ 지식이 추가되었습니다!")
+                st.success("✅ 추가 완료!")
                 st.balloons()
-                st.info("💡 중요한 지식은 GitHub에 백업하세요!")
     elif security_input:
-        st.error("❌ 잘못된 보안 코드")
+        st.error("❌ 잘못된 코드")
     else:
-        st.info("💡 지식을 추가하려면 보안 코드를 입력하세요.")
+        st.info("💡 보안 코드를 입력하세요 (2398)")
 
-# 지식 검색
 elif mode == "📚 지식 검색":
     st.header("📚 지식 검색")
-    search_term = st.text_input("검색어:", placeholder="예: 프로토콜, 조영제, 장비")
+    search_term = st.text_input("검색어:")
     
     if search_term:
         results = search_knowledge(search_term)
         if results:
-            st.success(f"🔍 검색 결과: {len(results)}개")
+            st.success(f"🔍 {len(results)}개 결과")
             for doc in results:
-                with st.expander(f"📄 {doc['title']} - {doc['category']} (관련도: {doc['score']})"):
+                with st.expander(f"📄 {doc['title']} - {doc['category']} ({doc['score']}점)"):
                     st.markdown(doc['content'])
                     if doc.get('tags'):
                         st.caption(f"태그: {doc['tags']}")
         else:
-            st.warning("검색 결과가 없습니다.")
+            st.warning("검색 결과 없음")
 
-# 지식 편집
 elif mode == "✏️ 지식 편집":
     st.header("✏️ 지식 편집")
     all_docs = get_all_knowledge()
     
     if all_docs:
         doc_titles = [f"{doc['title']} ({doc['category']})" for doc in all_docs]
-        selected_idx = st.selectbox("편집할 지식 선택:", range(len(doc_titles)), format_func=lambda x: doc_titles[x])
+        selected_idx = st.selectbox("편집할 지식:", range(len(doc_titles)), format_func=lambda x: doc_titles[x])
         selected_doc = all_docs[selected_idx]
         
-        security_edit = st.text_input("편집 보안 코드:", type="password", key="security_edit")
+        security_edit = st.text_input("편집 코드:", type="password", key="edit_security")
         
         if security_edit == SECURITY_CODE:
             st.success("✅ 편집 권한 확인")
-            with st.form("edit_knowledge_form"):
+            with st.form("edit_form"):
                 new_title = st.text_input("제목:", value=selected_doc['title'])
                 new_category = st.selectbox("카테고리:", ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"],
                                            index=["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"].index(selected_doc['category']) if selected_doc['category'] in ["프로토콜", "안전수칙", "장비운용", "응급상황", "기타"] else 4)
-                new_content = st.text_area("내용:", value=selected_doc['content'], height=250)
+                new_content = st.text_area("내용:", value=selected_doc['content'], height=200)
                 new_tags = st.text_input("태그:", value=selected_doc.get('tags', ''))
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.form_submit_button("💾 수정 저장") and new_title and new_content:
+                    if st.form_submit_button("💾 저장") and new_title and new_content:
                         update_knowledge(selected_doc['id'], new_title, new_content, new_category, new_tags)
                         st.success("✅ 수정 완료!")
                         st.rerun()
@@ -381,21 +317,16 @@ elif mode == "✏️ 지식 편집":
                         st.success("🗑️ 삭제 완료!")
                         st.rerun()
         elif security_edit:
-            st.error("❌ 잘못된 보안 코드")
+            st.error("❌ 잘못된 코드")
     else:
         st.info("편집할 지식이 없습니다.")
 
 # 하단 정보
 st.markdown("---")
-st.markdown("### 💾 데이터 보존 안내")
 st.markdown("""
-**🔄 자동 복원**: 앱 시작 시 GitHub에서 자동으로 지식 복원  
-**💾 수동 백업**: 사이드바에서 "GitHub에 백업" 클릭  
-**📥 관리자 복원**: 관리자 코드로 수동 복원 가능  
-**⚠️ 주의**: 정기적으로 GitHub 백업을 권장합니다.
-
-**🔧 백업 문제 해결:**
-- 404 오류: GitHub 토큰 권한 확인 필요
-- 403 오류: 토큰에 repo 쓰기 권한 필요
-- 관리자에게 GitHub 설정 문의
+### 💾 사용 안내
+- **리부트 시 보존**: 앱 시작 시 GitHub에서 자동 복원
+- **수동 백업**: 사이드바 "백업" 버튼 클릭  
+- **수동 복원**: 코드 2398 입력 후 "복원" 버튼
+- **보안 코드**: 지식 추가/편집 시 2398 입력
 """)
