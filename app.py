@@ -282,6 +282,24 @@ if use_gemini:
     st.sidebar.info(f"🤖 오늘 AI 사용량: {usage['count']}/1,500")
     if usage['count'] >= 1500:
         st.sidebar.warning("일일 무료 한도 초과!")
+else:
+    # Gemini API 상태 디버깅 정보 추가
+    st.sidebar.warning("🤖 AI 기능 비활성화됨")
+    
+    # 디버깅 정보 표시
+    with st.sidebar.expander("🔧 AI 상태 확인"):
+        st.write(f"GEMINI_AVAILABLE: {GEMINI_AVAILABLE}")
+        
+        api_key = st.secrets.get('GOOGLE_API_KEY')
+        if api_key:
+            if api_key == "your_google_gemini_api_key_here":
+                st.write("❌ API 키가 기본값입니다")
+            else:
+                st.write(f"✅ API 키 설정됨: {api_key[:10]}...")
+        else:
+            st.write("❌ API 키가 설정되지 않음")
+        
+        st.write(f"use_gemini: {use_gemini}")
 
 # 메인 기능
 st.sidebar.markdown("---")
@@ -289,6 +307,13 @@ mode = st.sidebar.radio("기능 선택", ["💬 질문하기", "📝 지식 추�
 
 if mode == "💬 질문하기":
     st.header("💬 질문하기")
+    
+    # Gemini API 상태 표시
+    if use_gemini:
+        st.success("🤖 Gemini 1.5 Flash AI 답변 활성화됨")
+    else:
+        st.warning("🤖 현재 키워드 검색만 가능 (AI 답변 비활성화)")
+    
     question = st.text_input("궁금한 것을 입력하세요:", placeholder="예: 조영제 부작용 대응 방법")
     
     if question:
@@ -299,8 +324,9 @@ if mode == "💬 질문하기":
         if results:
             st.success(f"🎯 {len(results)}개의 관련 자료를 찾았습니다!")
             
-            # 2단계: Gemini AI 답변 생성 (선택사항)
+            # 2단계: Gemini AI 답변 생성 (활성화된 경우에만)
             if use_gemini and load_usage()["count"] < 1500:
+                st.info("🤖 AI가 답변을 생성합니다...")
                 with st.spinner("🤖 AI가 검색된 자료를 분석하여 답변을 생성 중..."):
                     try:
                         model = genai.GenerativeModel('gemini-1.5-flash')
@@ -350,12 +376,24 @@ if mode == "💬 질문하기":
                         st.info("AI 답변 생성에 실패했지만, 아래 검색된 자료를 확인하세요.")
             
             elif not use_gemini:
+                st.info("🤖 AI 답변 기능을 활성화하려면 아래를 확인하세요:")
                 with st.expander("🤖 AI 답변 기능 활성화하기"):
-                    st.info("""
+                    st.markdown("""
                     **Gemini 1.5 Flash AI 답변 기능을 사용하려면:**
-                    1. Google AI Studio에서 무료 API 키 발급
-                    2. Streamlit Secrets에 GOOGLE_API_KEY 추가
-                    3. **일일 1,500회 무료**로 AI 답변 이용 가능
+                    
+                    1. **Google AI Studio**에서 무료 API 키 발급
+                       - https://makersuite.google.com/app/apikey 접속
+                       - "Create API key" 클릭
+                       - API 키 복사
+                    
+                    2. **Streamlit Secrets 설정**
+                       - 앱 관리자에게 다음 정보 전달:
+                       ```
+                       GOOGLE_API_KEY = "발급받은_API_키"
+                       ```
+                    
+                    3. **사용량**: 일일 1,500회 무료
+                    4. **기능**: 검색된 자료를 AI가 종합하여 맞춤 답변 생성
                     """)
             
             elif load_usage()["count"] >= 1500:
