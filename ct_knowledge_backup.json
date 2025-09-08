@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-03T06:16:54.845835",
-  "total_documents": 3,
+  "backup_time": "2025-09-08T03:20:53.693546",
+  "total_documents": 4,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -27,6 +27,14 @@
         "category": "프로토콜",
         "tags": "ER Brain 코어라인 소프트 AI 관련하여 전달사항 필립스에서 검사시 꼭 지켜야 하는 점 알려 드립니다.  1. Brain axial 영상에 \"AX\" description 넣기 2. Brain axial 영상은 꼭 CT viewer로 만들기(MPR로 만들면 오류발생)",
         "created_at": "2025-09-03T06:16:36.718597"
+      },
+      "20250908_032053_5707": {
+        "id": "20250908_032053_5707",
+        "title": "a",
+        "content": "a",
+        "category": "프로토콜",
+        "tags": "a",
+        "created_at": "2025-09-08T03:20:53.693518"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
