@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-09T00:41:03.717506",
-  "total_documents": 5,
+  "backup_time": "2025-09-10T00:11:30.036533",
+  "total_documents": 6,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -44,6 +44,15 @@
         "category": "기타",
         "tags": "PET-CT, PET",
         "created_at": "2025-09-09T00:40:57.949503"
+      },
+      "20250910_000939_7017": {
+        "id": "20250910_000939_7017",
+        "title": "CT 조영제(CE)와 MRI(엠알) 조영제(CE)검사 시 우선순위",
+        "content": "CT와 MRI 모두 동일한 날 CE검사가 있다면, CT CE검사 후 MRI CE검사를 진행해야한다.\n이유\nMRI CE를 먼저 검사 한 후 CT CE 검사를 진행하면 체내 남아있는 조영제로 인해 판독에 영향을 받는다.\n(특히 복부 및 비뇨기계통검사에서)",
+        "category": "기타",
+        "tags": "MRI, 엠알, 조영제 MRICE, 엠알조영제, 엠알CE",
+        "created_at": "2025-09-10T00:09:39.603192",
+        "updated_at": "2025-09-10T00:11:24.551764"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
