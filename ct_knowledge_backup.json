@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-12T01:01:41.276250",
-  "total_documents": 9,
+  "backup_time": "2025-09-12T08:00:18.253600",
+  "total_documents": 10,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -78,6 +78,14 @@
         "tags": "병주",
         "created_at": "2025-09-11T07:37:38.756844",
         "updated_at": "2025-09-12T00:56:01.248581"
+      },
+      "20250912_080013_5737": {
+        "id": "20250912_080013_5737",
+        "title": "25229072 예시환자번호 Lt knee post op f/u CT 1. 전체 recon (tibia, femur 모두포함) 2. tibia만 recon 자를 필요없고, 상하좌우 회전 tendon 들어가는 hole 보이도록 3. femur만 recon, vertical하게 잘라서 tendon 들어가는 hole 보이도록 잘",
+        "content": "Lt knee post op f/u CT\n1. 전체 recon (tibia, femur 모두포함)\n2. tibia만 recon 자를 필요없고, 상하좌우 회전 tendon 들어가는 hole 보이도록\n3. femur만 recon, vertical하게 잘라서 tendon 들어가는 hole 보이도록 잘\n25229072 예시환자번호",
+        "category": "프로토콜",
+        "tags": "Lt knee post op f/u CT 1. 전체 recon (tibia, femur 모두포함) 2. tibia만 recon 자를 필요없고, 상하좌우 회전 tendon 들어가는 hole 보이도록 3. femur만 recon, vertical하게 잘라서 tendon 들어가는 hole 보이도록 잘",
+        "created_at": "2025-09-12T08:00:13.057693"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
