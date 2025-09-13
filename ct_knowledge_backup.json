@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-13T01:39:13.495138",
-  "total_documents": 10,
+  "backup_time": "2025-09-13T01:45:52.635285",
+  "total_documents": 11,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -86,6 +86,14 @@
         "category": "프로토콜",
         "tags": "Lt knee post op f/u CT 1. 전체 recon (tibia, femur 모두포함) 2. tibia만 recon 자를 필요없고, 상하좌우 회전 tendon 들어가는 hole 보이도록 3. femur만 recon, vertical하게 잘라서 tendon 들어가는 hole 보이도록 잘",
         "created_at": "2025-09-12T08:00:13.057693"
+      },
+      "20250913_014425_1373": {
+        "id": "20250913_014425_1373",
+        "title": "IP 목록",
+        "content": "IP 주소 목록\n\n190.11.101.75 테라리컨\n\n190.1.122.158 라피디아\n\n190.1.122.239 행정\n\n190.1.122.100 필립스 행정\n\n190.11.101.143 지멘스 행정\n\n190.1.101.106 간호 행정\n",
+        "category": "기타",
+        "tags": "IP, 아이피, 주소",
+        "created_at": "2025-09-13T01:44:25.951615"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
