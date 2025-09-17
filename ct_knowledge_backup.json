@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-15T02:15:19.682851",
-  "total_documents": 13,
+  "backup_time": "2025-09-17T04:40:57.112514",
+  "total_documents": 14,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -113,6 +113,14 @@
         "tags": "동의서, 퍼미션, permission",
         "created_at": "2025-09-15T01:38:27.993979",
         "updated_at": "2025-09-15T01:57:07.853431"
+      },
+      "20250917_044053_5702": {
+        "id": "20250917_044053_5702",
+        "title": "필립스, Brain CT, 관하여",
+        "content": "1. Brain CT 는 모든 영상을 CT viewer로 영상을 만든다. MPR 로 만든영상에 픽셀이 깨지는 문제가 있기 때문이다. ",
+        "category": "프로토콜",
+        "tags": "필립스, Brain CT",
+        "created_at": "2025-09-17T04:40:53.282997"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
