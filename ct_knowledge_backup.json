@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-09-30T05:18:37.552552",
-  "total_documents": 4,
+  "backup_time": "2025-09-30T06:32:01.664353",
+  "total_documents": 5,
   "knowledge_db": {
     "documents": {
       "default_1": {
@@ -34,6 +34,14 @@
         "category": "프로토콜",
         "tags": "",
         "created_at": "2025-08-28T02:36:59.837010"
+      },
+      "20250930_063201_9920": {
+        "id": "20250930_063201_9920",
+        "title": "교수 에 따른 요청사항 정리",
+        "content": "정형외과 이상림 wrist 3D volume rendering 은 transverse 12장, vertical 12장 보내줍니다. \n성형외과 정철훈 facial 은 머리 끝까지 포함해서 검사합니다. ",
+        "category": "프로토콜",
+        "tags": "교수, 요청사항, 정리, 이상림, 정철훈",
+        "created_at": "2025-09-30T06:32:01.664319"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
