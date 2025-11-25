@@ -1,6 +1,6 @@
 {
-  "backup_time": "2025-11-05T00:49:13.748754",
-  "total_documents": 18,
+  "backup_time": "2025-11-25T01:02:55.529478",
+  "total_documents": 19,
   "knowledge_db": {
     "documents": {
       "20250930_063201_9920": {
@@ -152,6 +152,14 @@
         "category": "프로토콜",
         "tags": "liver, pancreas, IVC, artifact",
         "created_at": "2025-11-05T00:48:25.954671"
+      },
+      "20251125_010240_5686": {
+        "id": "20251125_010240_5686",
+        "title": "병주",
+        "content": "1. MRI Prostate 검사 전 진경제 주사처방(주사실) 그리고 금식 npo 해야된다고 함.",
+        "category": "프로토콜",
+        "tags": "병주",
+        "created_at": "2025-11-25T01:02:40.419683"
       }
     },
     "last_updated": "2025-08-28T02:36:15.148945"
